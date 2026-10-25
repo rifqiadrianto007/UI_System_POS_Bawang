@@ -36,7 +36,7 @@ export default function KasirPage() {
     queryFn: () => api<{ data: Product[] }>('/products').then((r) => r.data.filter((p) => p.is_active)),
   })
 
-  // Harga SELALU dari backend (quote). Frontend tidak menghitung harga sendiri.
+  // Harga SELALU dari backend (quote). Jumlah yang harus dibayar = quote.subtotal (bukan quote.total, yang bergantung pada final_total).
   const items = lines.map((l) => ({ product_id: l.product.id, weight_kg: gramsToKgString(l.grams) }))
   const liveKey = JSON.stringify([category, items])
   const key = useDebounced(liveKey, 300)
@@ -53,7 +53,7 @@ export default function KasirPage() {
   })
   const quote = quoteQ.data
   const quoteError = quoteQ.isError ? (quoteQ.error instanceof Error ? quoteQ.error.message : 'Gagal menghitung harga.') : null
-  const ready = lines.length > 0 && key === liveKey && !quoteQ.isFetching && !quoteQ.isError && !!quote &&
+  const ready = lines.length > 0 && key === liveKey && (quote?.subtotal ?? 0) > 0 && !quoteQ.isFetching && !quoteQ.isError && !!quote &&
     lines.every((l) => quote.items.some((i) => i.product_id === l.product.id && kgStringToGrams(i.weight_kg) === l.grams))
 
   const add = (p: Product, g: number) => {
@@ -81,10 +81,9 @@ export default function KasirPage() {
     return () => { clearTimeout(t); window.removeEventListener('afterprint', after) }
   }, [printData])
 
-  async function submit(paid: number, print: boolean) {
+  async function submit(finalTotal: number, paid: number, print: boolean) {
     if (!quote || busy) return
     setBusy(true); setPayError(null)
-    const finalTotal = Math.min(quote.total, paid)
     const body = {
       customer_category: category, items, customer_name: name.trim() || null,
       payment_method: method, final_total: finalTotal, amount_paid: paid, occurred_at: null,
@@ -97,7 +96,7 @@ export default function KasirPage() {
         method: 'POST', body: JSON.stringify({ client_uuid: attempt.current.id, ...body }),
       })
       setPaying(false)
-      setDone({ id: tx.data.id, invoice: tx.data.invoice_no, total: finalTotal, paid, change: Math.max(0, paid - quote.total) })
+      setDone({ id: tx.data.id, invoice: tx.data.invoice_no, total: finalTotal, paid, change: Math.max(0, paid - finalTotal) })
       resetCart()
       if (print) void printFor(tx.data.id, paid)
     } catch (e) {
@@ -158,13 +157,13 @@ export default function KasirPage() {
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-surface-border bg-white px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button onClick={() => setSheet(true)} className="flex w-full items-center justify-between rounded-xl bg-brand px-4 py-3 text-white">
             <span className="flex items-center gap-2 font-semibold"><ShoppingCart size={18} /> {lines.length} item</span>
-            <span className="font-bold">{ready && quote ? rupiah(quote.total) : '...'} &middot; Lihat keranjang</span>
+            <span className="font-bold">{ready && quote ? rupiah(quote.subtotal) : '...'} &middot; Lihat keranjang</span>
           </button>
         </div>
       )}
       {!isDesktop && sheet && <Modal title="Keranjang" onClose={() => setSheet(false)}><div className="-mx-5 -my-4">{cart}</div></Modal>}
       {picking && <WeightPicker product={picking} onAdd={(g) => add(picking, g)} onClose={() => setPicking(null)} />}
-      {paying && quote && <PaymentModal total={quote.total} method={method} busy={busy} error={payError} onSubmit={submit} onClose={() => setPaying(false)} />}
+      {paying && quote && <PaymentModal subtotal={quote.subtotal} method={method} busy={busy} error={payError} onSubmit={submit} onClose={() => setPaying(false)} />}
 
       {done && (
         <Modal title="Transaksi berhasil" onClose={() => { setDone(null); setPrintErr(null) }}

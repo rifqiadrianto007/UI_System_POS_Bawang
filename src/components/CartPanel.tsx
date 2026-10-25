@@ -87,7 +87,7 @@ export default function CartPanel(p: Props) {
         <div className="border-t border-dashed border-surface-border pt-3">
           <p className="text-sm text-ink-muted">Total pembayaran</p>
           <p className={`flex items-center gap-2 text-2xl font-extrabold text-brand ${loading ? 'opacity-50' : ''}`}>
-            {empty ? 'Rp 0' : p.quote ? rupiah(p.quote.total) : '...'}
+            {empty ? 'Rp 0' : p.quote ? rupiah(p.quote.subtotal) : '...'}
             {loading && <Loader2 size={18} className="animate-spin" />}
           </p>
           {p.error && <p role="alert" className="mt-1 text-xs text-danger">{p.error}</p>}
