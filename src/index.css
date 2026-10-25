@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "@fontsource-variable/plus-jakarta-sans";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --color-brand: #5C0707;
+  --color-brand-hover: #4A0505;      /* turunan, hover/active */
+  --color-surface: #F5EADD;          /* card dan panel pendukung */
+  --color-surface-border: #E6D6C2;   /* turunan, border di atas beige */
+  --color-page: #FFFFFF;
+  --color-ink: #000000;
+  --color-ink-muted: #6B6B6B;        /* turunan, teks sekunder */
+  --color-danger: #D92D20;           /* di luar palet client, khusus aksi hapus/error */
+}
+
+html, body, #root { height: 100%; }
+body { background: var(--color-page); color: var(--color-ink); font-family: var(--font-sans); }
+
+/* Nota 58 mm: disembunyikan di layar, satu-satunya yang tampil saat window.print() */
+.print-only { display: none; }
+@media print {
+  @page { size: 58mm auto; margin: 0; }
+  body > *:not(.print-only) { display: none !important; }
+  .print-only { display: block; width: 58mm; padding: 2mm 3mm; background: #fff; color: #000; font: 11px/1.35 ui-monospace, "Courier New", monospace; }
+}
