@@ -81,10 +81,9 @@ export default function KasirPage() {
     return () => { clearTimeout(t); window.removeEventListener('afterprint', after) }
   }, [printData])
 
-  async function submit(paid: number, print: boolean) {
+  async function submit(finalTotal: number, paid: number, print: boolean) {
     if (!quote || busy) return
     setBusy(true); setPayError(null)
-    const finalTotal = Math.min(quote.subtotal, paid)
     const body = {
       customer_category: category, items, customer_name: name.trim() || null,
       payment_method: method, final_total: finalTotal, amount_paid: paid, occurred_at: null,
@@ -97,7 +96,7 @@ export default function KasirPage() {
         method: 'POST', body: JSON.stringify({ client_uuid: attempt.current.id, ...body }),
       })
       setPaying(false)
-      setDone({ id: tx.data.id, invoice: tx.data.invoice_no, total: finalTotal, paid, change: Math.max(0, paid - quote.subtotal) })
+      setDone({ id: tx.data.id, invoice: tx.data.invoice_no, total: finalTotal, paid, change: Math.max(0, paid - finalTotal) })
       resetCart()
       if (print) void printFor(tx.data.id, paid)
     } catch (e) {
@@ -164,7 +163,7 @@ export default function KasirPage() {
       )}
       {!isDesktop && sheet && <Modal title="Keranjang" onClose={() => setSheet(false)}><div className="-mx-5 -my-4">{cart}</div></Modal>}
       {picking && <WeightPicker product={picking} onAdd={(g) => add(picking, g)} onClose={() => setPicking(null)} />}
-      {paying && quote && <PaymentModal total={quote.subtotal} method={method} busy={busy} error={payError} onSubmit={submit} onClose={() => setPaying(false)} />}
+      {paying && quote && <PaymentModal subtotal={quote.subtotal} method={method} busy={busy} error={payError} onSubmit={submit} onClose={() => setPaying(false)} />}
 
       {done && (
         <Modal title="Transaksi berhasil" onClose={() => { setDone(null); setPrintErr(null) }}
