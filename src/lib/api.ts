@@ -41,7 +41,10 @@ export async function api<T>(path: string, init: RequestInit & { auth?: boolean 
   const body = await res.json().catch(() => null)
   if (!res.ok) {
     if (res.status === 401 && auth) onUnauthorized()
-    throw new ApiError(body?.message ?? 'Terjadi kesalahan pada server.', res.status, body?.errors)
+    // Pesan mentah dari error 5xx (mis. SQL) tidak boleh sampai ke layar kasir.
+    if (res.status >= 500) console.error('[API]', res.status, body?.message)
+    const message = res.status >= 500 ? 'Terjadi gangguan di server. Coba lagi, atau hubungi admin jika berulang.' : (body?.message ?? 'Terjadi kesalahan.')
+    throw new ApiError(message, res.status, body?.errors)
   }
   return body as T
 }

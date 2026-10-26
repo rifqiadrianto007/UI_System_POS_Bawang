@@ -16,10 +16,10 @@
 html, body, #root { height: 100%; }
 body { background: var(--color-page); color: var(--color-ink); font-family: var(--font-sans); }
 
-/* Nota 58 mm: disembunyikan di layar, satu-satunya yang tampil saat window.print() */
-.print-only { display: none; }
+/* Nota 58 mm: dirender di luar layar (agar tingginya bisa diukur), hanya tampil saat window.print().
+   @page size diset dinamis oleh Receipt58 (nilai "58mm auto" tidak valid di CSS, Chrome jatuh ke A4). */
+.print-only { position: fixed; top: 0; left: -10000px; width: 58mm; padding: 2mm 3mm; background: #fff; color: #000; font: 11px/1.35 var(--font-sans); }
 @media print {
-  @page { size: 58mm auto; margin: 0; }
   body > *:not(.print-only) { display: none !important; }
-  .print-only { display: block; width: 58mm; padding: 2mm 3mm; background: #fff; color: #000; font: 11px/1.35 ui-monospace, "Courier New", monospace; }
+  .print-only { position: static; }
 }
