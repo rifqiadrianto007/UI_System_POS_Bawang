@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { CheckCircle2, Package, Plus, Printer, Search, ShoppingCart } from 'lucide-react'
+import { CheckCircle2, Download, Package, Plus, Printer, Search, ShoppingCart } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { rupiah } from '../lib/format'
 import { gramsToKgString, kgStringToGrams, uuid, useDebounced, useMediaQuery } from '../lib/util'
@@ -66,11 +66,18 @@ export default function KasirPage() {
   const remove = (id: number) => setLines((ls) => ls.filter((l) => l.product.id !== id))
   const resetCart = () => { setLines([]); setName(''); setCategory('ecer'); setMethod('cash'); setSheet(false); attempt.current = null }
 
+  const fetchReceipt = (id: number, paid: number) =>
+    api<{ data: Receipt }>(`/transactions/${id}/receipt`).then((rc) => ({ ...rc.data, amount_paid: rc.data.amount_paid ?? paid }))
+
   async function printFor(id: number, paid: number) {
+    try { setPrintData(await fetchReceipt(id, paid)); setPrintErr(null) }
+    catch { setPrintErr('Nota gagal diambil. Transaksi sudah tersimpan, coba cetak lagi.') }
+  }
+  async function pdfFor(id: number, paid: number) {
     try {
-      const rc = await api<{ data: Receipt }>(`/transactions/${id}/receipt`)
-      setPrintData({ ...rc.data, amount_paid: rc.data.amount_paid ?? paid }); setPrintErr(null)
-    } catch { setPrintErr('Nota gagal diambil. Transaksi sudah tersimpan, coba cetak lagi.') }
+      const { downloadReceiptPdf } = await import('../lib/receiptPdf')
+      await downloadReceiptPdf(await fetchReceipt(id, paid)); setPrintErr(null)
+    } catch { setPrintErr('PDF gagal dibuat. Transaksi sudah tersimpan, coba lagi.') }
   }
 
   useEffect(() => {
@@ -168,9 +175,12 @@ export default function KasirPage() {
       {done && (
         <Modal title="Transaksi berhasil" onClose={() => { setDone(null); setPrintErr(null) }}
           footer={
-            <div className="flex gap-2">
-              <button onClick={() => void printFor(done.id, done.paid)} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-brand py-3 font-semibold text-brand"><Printer size={16} /> Cetak nota</button>
-              <button onClick={() => { setDone(null); setPrintErr(null) }} className="flex-1 rounded-xl bg-brand py-3 font-semibold text-white">Transaksi baru</button>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <button onClick={() => void printFor(done.id, done.paid)} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-brand py-3 font-semibold text-brand"><Printer size={16} /> Cetak nota</button>
+                <button onClick={() => void pdfFor(done.id, done.paid)} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-brand py-3 font-semibold text-brand"><Download size={16} /> Unduh PDF</button>
+              </div>
+              <button onClick={() => { setDone(null); setPrintErr(null) }} className="w-full rounded-xl bg-brand py-3 font-semibold text-white">Transaksi baru</button>
             </div>
           }>
           <div className="text-center">

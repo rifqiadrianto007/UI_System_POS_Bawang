@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import { STORE } from '../config/store'
 import { formatReceiptDate, rupiah } from '../lib/format'
 import type { Receipt } from '../lib/types'
@@ -9,11 +10,16 @@ function Row({ a, b, bold }: { a: string; b: string; bold?: boolean }) {
 
 // Nota kertas 58 mm sesuai desain client. Hanya tampil saat print (lihat .print-only di index.css).
 export default function Receipt58({ r }: { r: Receipt }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [mm, setMm] = useState<number | null>(null)
+  // Ukur tinggi nota (px -> mm) lalu pasang sebagai ukuran kertas, supaya tidak jatuh ke A4.
+  useLayoutEffect(() => { if (ref.current) setMm(Math.ceil((ref.current.offsetHeight * 25.4) / 96) + 2) }, [r])
   const { date, time } = formatReceiptDate(r.occurred_at)
   const paid = r.amount_paid ?? null
   const change = paid != null ? Math.max(0, paid - r.total) : 0
   return (
-    <div className="print-only">
+    <div className="print-only" ref={ref}>
+      {mm && <style>{`@page { size: 58mm ${mm}mm; margin: 0; }`}</style>}
       <div className="text-center">
         <p className="text-[18px] leading-tight font-extrabold tracking-wide">{STORE.name}</p>
         <p className="mt-0.5 text-[10px] italic">{STORE.address}</p>
