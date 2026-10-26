@@ -21,5 +21,5 @@ body { background: var(--color-page); color: var(--color-ink); font-family: var(
 @media print {
   @page { size: 58mm auto; margin: 0; }
   body > *:not(.print-only) { display: none !important; }
-  .print-only { display: block; width: 58mm; padding: 2mm 3mm; background: #fff; color: #000; font: 11px/1.35 ui-monospace, "Courier New", monospace; }
+  .print-only { display: block; width: 58mm; padding: 2mm 3mm; background: #fff; color: #000; font: 11px/1.35 var(--font-sans); }
 }
