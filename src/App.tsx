@@ -4,7 +4,7 @@ import AppShell from './components/AppShell'
 import { useAuth } from './lib/auth'
 import KasirPage from './pages/KasirPage'
 import LoginPage from './pages/LoginPage'
-import Placeholder from './pages/Placeholder'
+import RiwayatPage from './pages/RiwayatPage'
 
 function RequireAuth() {
   const { user, loading } = useAuth()
@@ -20,7 +20,7 @@ export default function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppShell />}>
             <Route path="/kasir" element={<KasirPage />} />
-            <Route path="/riwayat" element={<Placeholder name="Riwayat Transaksi" />} />
+            <Route path="/riwayat" element={<RiwayatPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/kasir" replace />} />
