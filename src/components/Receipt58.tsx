@@ -46,7 +46,7 @@ export default function Receipt58({ r }: { r: Receipt }) {
       {STORE.showPayment && paid != null && (
         <>
           <Row a="BAYAR:" b={rupiah(paid)} />
-          {change > 0 && <Row a="KEMBALI:" b={rupiah(change)} />}
+          <Row a="KEMBALI:" b={rupiah(change)} />
         </>
       )}
 

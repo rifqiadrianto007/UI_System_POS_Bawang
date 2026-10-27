@@ -51,7 +51,7 @@ function draw(doc: jsPDF, r: Receipt): number {
   row('TOTAL:', rupiah(r.total), 9, 'bold')
   if (STORE.showPayment && r.amount_paid != null) {
     row('BAYAR:', rupiah(r.amount_paid))
-    if (r.amount_paid > r.total) row('KEMBALI:', rupiah(r.amount_paid - r.total))
+    row('KEMBALI:', rupiah(Math.max(0, r.amount_paid - r.total)))
   }
   y += 4
   text('TERIMA KASIH', 9, 'bolditalic')

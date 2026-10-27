@@ -6,5 +6,5 @@ export const STORE = {
   phone: '082139578380', // dari desain nota client, pastikan bukan data dummy
   // Di luar desain client. Nyalakan bila client setuju.
   showInvoiceNo: false, // nomor invoice kecil di bawah tanggal (berguna untuk mencari transaksi saat void/komplain)
-  showPayment: false,   // baris BAYAR dan KEMBALI setelah TOTAL
+  showPayment: true,    // baris BAYAR dan KEMBALI setelah TOTAL (revisi client)
 }
