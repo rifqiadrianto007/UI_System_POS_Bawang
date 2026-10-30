@@ -1,26 +1,25 @@
 import { useState, type FormEvent } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Settings, User } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import { ApiError } from '../lib/api'
+import { homeFor } from '../lib/roles'
 
 export default function LoginPage() {
   const { user, login } = useAuth()
-  const navigate = useNavigate()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  if (user) return <Navigate to="/kasir" replace />
+  if (user) return <Navigate to={homeFor(user.role)} replace />
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(''); setBusy(true)
     try {
-      await login(username.trim(), password)
-      navigate('/kasir', { replace: true })
+      await login(username.trim(), password) // setelah user terisi, halaman ini mengarahkan sesuai role
     } catch (err) {
       const msg = err instanceof ApiError ? (err.errors ? Object.values(err.errors)[0]?.[0] : err.message) : 'Terjadi kesalahan.'
       setError(msg ?? 'Login gagal.')
