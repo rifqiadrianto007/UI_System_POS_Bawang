@@ -1,0 +1,17 @@
+# File teks umum
+* text=auto
+
+# File JSON menggunakan LF
+*.json text eol=lf
+
+# File PHP menggunakan LF
+*.php text eol=lf
+
+# File JavaScript dan TypeScript menggunakan LF
+*.js text eol=lf
+*.jsx text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+
+# File Markdown menggunakan LF
+*.md text eol=lf

@@ -225,12 +225,19 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}{{api_prefix}}/products",
+              "raw": "{{base_url}}{{api_prefix}}/products?active=1",
               "host": [
                 "{{base_url}}{{api_prefix}}"
               ],
               "path": [
                 "products"
+              ],
+              "query": [
+                {
+                  "key": "active",
+                  "value": "1",
+                  "description": "Filter aktif untuk owner; kasir tetap hanya menerima produk aktif."
+                }
               ]
             }
           }
@@ -532,131 +539,246 @@
               "name": "List Transactions Yesterday",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Accept", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}{{api_prefix}}/transactions?period=yesterday",
-                  "host": ["{{base_url}}{{api_prefix}}"],
-                  "path": ["transactions"],
-                  "query": [{ "key": "period", "value": "yesterday" }]
+                  "host": [
+                    "{{base_url}}{{api_prefix}}"
+                  ],
+                  "path": [
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "yesterday"
+                    }
+                  ]
                 }
               },
-              "event": [{
-                "listen": "test",
-                "script": { "type": "text", "exec": [
-                  "pm.test('Riwayat kemarin berhasil', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "    pm.expect(pm.response.json().summary).to.be.an('object');",
-                  "});"
-                ] }
-              }]
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text",
+                    "exec": [
+                      "pm.test('Riwayat kemarin berhasil', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "    pm.expect(pm.response.json().summary).to.be.an('object');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
             },
             {
               "name": "Search Transaction Invoice",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Accept", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}{{api_prefix}}/transactions?period=today&q=0001",
-                  "host": ["{{base_url}}{{api_prefix}}"],
-                  "path": ["transactions"],
-                  "query": [{ "key": "period", "value": "today" }, { "key": "q", "value": "0001" }]
+                  "host": [
+                    "{{base_url}}{{api_prefix}}"
+                  ],
+                  "path": [
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "period",
+                      "value": "today"
+                    },
+                    {
+                      "key": "q",
+                      "value": "0001"
+                    }
+                  ]
                 }
               },
-              "event": [{
-                "listen": "test",
-                "script": { "type": "text", "exec": [
-                  "pm.test('Pencarian nomor nota berhasil', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "    pm.expect(pm.response.json().data).to.be.an('array');",
-                  "});"
-                ] }
-              }]
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text",
+                    "exec": [
+                      "pm.test('Pencarian nomor nota berhasil', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "    pm.expect(pm.response.json().data).to.be.an('array');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
             },
             {
               "name": "List Transactions Date Range",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Accept", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}{{api_prefix}}/transactions?from=2026-10-25&to=2026-10-26",
-                  "host": ["{{base_url}}{{api_prefix}}"],
-                  "path": ["transactions"],
-                  "query": [{ "key": "from", "value": "2026-10-25" }, { "key": "to", "value": "2026-10-26" }]
+                  "host": [
+                    "{{base_url}}{{api_prefix}}"
+                  ],
+                  "path": [
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "from",
+                      "value": "2026-10-25"
+                    },
+                    {
+                      "key": "to",
+                      "value": "2026-10-26"
+                    }
+                  ]
                 }
               },
-              "event": [{
-                "listen": "test",
-                "script": { "type": "text", "exec": [
-                  "pm.test('Rentang tanggal riwayat berhasil', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "    pm.expect(pm.response.json().meta).to.have.property('per_page');",
-                  "});"
-                ] }
-              }]
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text",
+                    "exec": [
+                      "pm.test('Rentang tanggal riwayat berhasil', function () {",
+                      "    pm.response.to.have.status(200);",
+                      "    pm.expect(pm.response.json().meta).to.have.property('per_page');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
             },
             {
               "name": "422 Cashier History Window",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Accept", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}{{api_prefix}}/transactions?from=2026-10-23",
-                  "host": ["{{base_url}}{{api_prefix}}"],
-                  "path": ["transactions"],
-                  "query": [{ "key": "from", "value": "2026-10-23" }]
+                  "host": [
+                    "{{base_url}}{{api_prefix}}"
+                  ],
+                  "path": [
+                    "transactions"
+                  ],
+                  "query": [
+                    {
+                      "key": "from",
+                      "value": "2026-10-23"
+                    }
+                  ]
                 }
               },
-              "event": [{
-                "listen": "test",
-                "script": { "type": "text", "exec": [
-                  "pm.test('Kasir ditolak untuk tanggal di luar jendela', function () {",
-                  "    pm.response.to.have.status(422);",
-                  "    pm.expect(pm.response.json().message).to.eql('Kasir hanya dapat melihat transaksi hari ini dan kemarin.');",
-                  "});"
-                ] }
-              }]
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text",
+                    "exec": [
+                      "pm.test('Kasir ditolak untuk tanggal di luar jendela', function () {",
+                      "    pm.response.to.have.status(422);",
+                      "    pm.expect(pm.response.json().message).to.eql('Kasir hanya dapat melihat transaksi hari ini dan kemarin.');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
             },
             {
               "name": "404 Old Transaction Detail",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Accept", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}{{api_prefix}}/transactions/{{old_transaction_id}}",
-                  "host": ["{{base_url}}{{api_prefix}}"],
-                  "path": ["transactions", "{{old_transaction_id}}"]
+                  "host": [
+                    "{{base_url}}{{api_prefix}}"
+                  ],
+                  "path": [
+                    "transactions",
+                    "{{old_transaction_id}}"
+                  ]
                 }
               },
-              "event": [{
-                "listen": "test",
-                "script": { "type": "text", "exec": [
-                  "pm.test('Detail transaksi lama tidak terungkap ke kasir', function () {",
-                  "    pm.response.to.have.status(404);",
-                  "    pm.expect(pm.response.json().message).to.eql('Data tidak ditemukan.');",
-                  "});"
-                ] }
-              }]
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text",
+                    "exec": [
+                      "pm.test('Detail transaksi lama tidak terungkap ke kasir', function () {",
+                      "    pm.response.to.have.status(404);",
+                      "    pm.expect(pm.response.json().message).to.eql('Data tidak ditemukan.');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
             },
             {
               "name": "404 Old Transaction Receipt",
               "request": {
                 "method": "GET",
-                "header": [{ "key": "Accept", "value": "application/json" }],
+                "header": [
+                  {
+                    "key": "Accept",
+                    "value": "application/json"
+                  }
+                ],
                 "url": {
                   "raw": "{{base_url}}{{api_prefix}}/transactions/{{old_transaction_id}}/receipt",
-                  "host": ["{{base_url}}{{api_prefix}}"],
-                  "path": ["transactions", "{{old_transaction_id}}", "receipt"]
+                  "host": [
+                    "{{base_url}}{{api_prefix}}"
+                  ],
+                  "path": [
+                    "transactions",
+                    "{{old_transaction_id}}",
+                    "receipt"
+                  ]
                 }
               },
-              "event": [{
-                "listen": "test",
-                "script": { "type": "text", "exec": [
-                  "pm.test('Nota transaksi lama tidak terungkap ke kasir', function () {",
-                  "    pm.response.to.have.status(404);",
-                  "    pm.expect(pm.response.json().message).to.eql('Data tidak ditemukan.');",
-                  "});"
-                ] }
-              }]
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text",
+                    "exec": [
+                      "pm.test('Nota transaksi lama tidak terungkap ke kasir', function () {",
+                      "    pm.response.to.have.status(404);",
+                      "    pm.expect(pm.response.json().message).to.eql('Data tidak ditemukan.');",
+                      "});"
+                    ]
+                  }
+                }
+              ]
             }
           ]
         },
@@ -1770,6 +1892,63 @@
           }
         },
         {
+          "name": "Update Open Purchase",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supplier_id\": 1,\n  \"purchased_at\": \"2026-10-22\",\n  \"gross_weight_kg\": \"100.000\",\n  \"price_per_kg\": 17000,\n  \"notes\": \"Batch diperbarui\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/purchases/{{purchase_id}}",
+              "host": [
+                "{{base_url}}{{api_prefix}}"
+              ],
+              "path": [
+                "purchases",
+                "{{purchase_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Open Purchase",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/purchases/{{purchase_id}}",
+              "host": [
+                "{{base_url}}{{api_prefix}}"
+              ],
+              "path": [
+                "purchases",
+                "{{purchase_id}}"
+              ]
+            }
+          }
+        },
+        {
           "name": "Add Purchase Lot",
           "request": {
             "method": "POST",
@@ -1801,6 +1980,43 @@
                 "purchases",
                 "{{purchase_id}}",
                 "lots"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Open Purchase Lot",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": \"{{product_id}}\",\n  \"clean_weight_kg\": \"40.000\",\n  \"cleaned_at\": \"2026-10-22\",\n  \"notes\": \"Berat sortir diperbarui\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/purchases/{{purchase_id}}/lots/{{lot_id}}",
+              "host": [
+                "{{base_url}}{{api_prefix}}"
+              ],
+              "path": [
+                "purchases",
+                "{{purchase_id}}",
+                "lots",
+                "{{lot_id}}"
               ]
             }
           }
@@ -1964,12 +2180,63 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}{{api_prefix}}/expenses",
+              "raw": "{{base_url}}{{api_prefix}}/expenses?per_page=20",
               "host": [
                 "{{base_url}}{{api_prefix}}"
               ],
               "path": [
                 "expenses"
+              ],
+              "query": [
+                {
+                  "key": "per_page",
+                  "value": "20",
+                  "description": "Jumlah baris per halaman (maksimal 50)."
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Expense Name Suggestions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/expenses/suggestions",
+              "host": [
+                "{{base_url}}{{api_prefix}}"
+              ],
+              "path": [
+                "expenses",
+                "suggestions"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Expense Categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/expenses/categories",
+              "host": [
+                "{{base_url}}{{api_prefix}}"
+              ],
+              "path": [
+                "expenses",
+                "categories"
               ]
             }
           }
@@ -1990,7 +2257,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Listrik toko\",\n  \"amount\": 50000,\n  \"spent_at\": \"2026-10-22\",\n  \"notes\": \"Tagihan bulan Oktober\"\n}",
+              "raw": "{\n  \"name\": \"Listrik toko\",\n  \"amount\": 50000,\n  \"spent_at\": \"2026-10-22\",\n  \"notes\": \"Tagihan bulan Oktober\",\n  \"category\": \"listrik_air\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2024,7 +2291,42 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Sewa toko\",\n  \"amount\": 75000,\n  \"spent_at\": \"2026-10-23\",\n  \"notes\": null\n}",
+              "raw": "{\n  \"name\": \"Sewa toko\",\n  \"amount\": 75000,\n  \"spent_at\": \"2026-10-23\",\n  \"notes\": null,\n  \"category\": \"sewa_retribusi\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/expenses/{{expense_id}}",
+              "host": [
+                "{{base_url}}{{api_prefix}}"
+              ],
+              "path": [
+                "expenses",
+                "{{expense_id}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Koreksi input\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2118,7 +2420,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}{{api_prefix}}/reports/stock?date=2026-10-22",
+              "raw": "{{base_url}}{{api_prefix}}/reports/stock?from=2026-10-01&to=2026-10-27",
               "host": [
                 "{{base_url}}{{api_prefix}}"
               ],
@@ -2128,8 +2430,12 @@
               ],
               "query": [
                 {
-                  "key": "date",
-                  "value": "2026-10-22"
+                  "key": "from",
+                  "value": "2026-10-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-10-27"
                 }
               ]
             }
