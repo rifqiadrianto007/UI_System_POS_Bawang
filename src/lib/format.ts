@@ -12,3 +12,8 @@ export function formatReceiptDate(iso: string) {
   const g = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
   return { date: `${g('day')}/${g('month')}/${g('year')}`, time: `${g('hour')}.${g('minute')}` }
 }
+
+export const rupiahSigned = (n: number) => (n < 0 ? '-' : '') + rupiah(Math.abs(n))
+// Sumbu grafik: 1.500.000 -> "1,5 jt", 250.000 -> "250 rb"
+export const compactRp = (n: number) =>
+  Math.abs(n) >= 1_000_000 ? `${+(n / 1_000_000).toFixed(1)} jt`.replace('.', ',') : Math.abs(n) >= 1_000 ? `${Math.round(n / 1_000)} rb` : String(n)

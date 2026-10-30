@@ -1,29 +1,17 @@
 import { useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { Banknote, CalendarDays, ChevronLeft, ChevronRight, Eye, Loader2, Printer, ReceiptText, Search, ShoppingCart, Tag, Wallet, X, type LucideIcon } from 'lucide-react'
+import { Banknote, CalendarDays, ChevronLeft, ChevronRight, Eye, Loader2, Printer, ReceiptText, Search, ShoppingCart, Tag, Wallet, X } from 'lucide-react'
 import { api } from '../lib/api'
 import { rupiah } from '../lib/format'
 import { useDebounced } from '../lib/util'
 import { useReceiptPrint } from '../hooks/useReceiptPrint'
+import StatCard from '../components/StatCard'
 import TransactionDetailModal, { METHOD, StatusBadge, dateTime } from '../components/TransactionDetailModal'
 import type { TxList, TxRow } from '../lib/types'
 
 type Period = 'today' | 'yesterday'
 const PERIODS: { id: Period; label: string }[] = [{ id: 'today', label: 'Hari ini' }, { id: 'yesterday', label: 'Kemarin' }]
 const PER_PAGE = 20
-
-function StatCard({ icon: Icon, label, value, note, dim }: { icon: LucideIcon; label: string; value: string; note?: string; dim?: boolean }) {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl bg-surface p-3 sm:p-4">
-      <div className="hidden size-11 shrink-0 place-items-center rounded-full bg-white text-brand sm:grid"><Icon size={20} /></div>
-      <div className="min-w-0">
-        <p className="text-xs text-ink-muted">{label}</p>
-        <p className={`truncate text-base font-extrabold text-brand sm:text-lg ${dim ? 'opacity-40' : ''}`}>{value}</p>
-        {note && <p className="text-[11px] text-ink-muted">{note}</p>}
-      </div>
-    </div>
-  )
-}
 
 export default function RiwayatPage() {
   const [period, setPeriod] = useState<Period>('today')

@@ -1,18 +1,27 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
-import { History, LogOut, Menu, ShoppingCart, X } from 'lucide-react'
-import { useAuth } from '../lib/auth'
+import { BarChart3, History, LogOut, Menu, Package, ShoppingCart, Wallet, X, type LucideIcon } from 'lucide-react'
+import { useAuth, type User } from '../lib/auth'
 
-const NAV = [
-  { to: '/kasir', label: 'Kasir', title: 'Kasir', sub: 'Toko Sumber Rezeki', icon: ShoppingCart },
-  { to: '/riwayat', label: 'Riwayat Transaksi', title: 'Riwayat Transaksi', sub: 'Lihat riwayat penjualan hari ini dan kemarin', icon: History },
+type Role = User['role']
+interface NavItem { to: string; label: string; title: string; sub: string | ((r: Role) => string); icon: LucideIcon; roles: Role[] }
+
+const NAV: NavItem[] = [
+  { to: '/kasir', label: 'Kasir', title: 'Kasir', sub: 'Toko Sumber Rezeki', icon: ShoppingCart, roles: ['kasir', 'owner'] },
+  { to: '/barang', label: 'Barang & Stok', title: 'Barang & Stok', sub: 'Kelola data barang dan inventori', icon: Package, roles: ['owner'] },
+  { to: '/riwayat', label: 'Riwayat Transaksi', title: 'Riwayat Transaksi', sub: (r) => (r === 'owner' ? 'Lihat dan kelola riwayat penjualan' : 'Lihat riwayat penjualan hari ini dan kemarin'), icon: History, roles: ['kasir', 'owner'] },
+  { to: '/laporan', label: 'Laporan', title: 'Laporan', sub: 'Analisa keuangan dan performa toko', icon: BarChart3, roles: ['owner'] },
+  { to: '/pengeluaran', label: 'Pengeluaran', title: 'Pengeluaran Toko', sub: 'Catat dan kelola pengeluaran operasional', icon: Wallet, roles: ['owner'] },
 ]
 
 export default function AppShell() {
   const { user, logout } = useAuth()
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
-  const cur = NAV.find((n) => pathname.startsWith(n.to))
+  const role: Role = user?.role ?? 'kasir'
+  const items = NAV.filter((n) => n.roles.includes(role))
+  const cur = items.find((n) => pathname.startsWith(n.to))
+  const sub = cur ? (typeof cur.sub === 'function' ? cur.sub(role) : cur.sub) : ''
   const initials = (user?.name ?? '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
 
   const sidebar = (
@@ -22,7 +31,7 @@ export default function AppShell() {
         <p className="text-xs text-ink-muted">Sistem kasir</p>
       </div>
       <nav className="flex-1 space-y-1 p-4">
-        {NAV.map(({ to, label, icon: Icon }) => (
+        {items.map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} onClick={() => setOpen(false)}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium ${isActive ? 'bg-surface text-brand' : 'text-ink hover:bg-surface/60'}`}>
@@ -57,17 +66,15 @@ export default function AppShell() {
             </button>
             <div className="min-w-0">
               <h1 className="text-lg font-bold leading-tight">{cur?.title}</h1>
-              <p className="truncate text-xs text-ink-muted">{cur?.sub}</p>
+              <p className="truncate text-xs text-ink-muted">{sub}</p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center">
-            <div className="flex items-center gap-3 rounded-xl bg-surface px-3 py-1.5">
-              <div className="text-right">
-                <p className="text-sm font-semibold leading-tight">{user?.name}</p>
-                <p className="text-[11px] capitalize text-ink-muted">{user?.role}</p>
-              </div>
-              <div className="grid size-9 place-items-center rounded-full bg-brand text-xs font-bold text-white">{initials}</div>
+          <div className="flex shrink-0 items-center gap-3 rounded-xl bg-surface px-3 py-1.5">
+            <div className="text-right">
+              <p className="text-sm font-semibold leading-tight">{user?.name}</p>
+              <p className="text-[11px] capitalize text-ink-muted">{user?.role}</p>
             </div>
+            <div className="grid size-9 place-items-center rounded-full bg-brand text-xs font-bold text-white">{initials}</div>
           </div>
         </header>
         <main className="min-h-0 flex-1 overflow-auto p-4 lg:p-6"><Outlet /></main>

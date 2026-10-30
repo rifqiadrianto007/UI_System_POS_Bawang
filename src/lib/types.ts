@@ -26,3 +26,17 @@ export interface TxDetail {
   payment_method: Method; status: TxStatus; occurred_at: string
   void_reason: string | null; voided_at: string | null; items: QuoteItem[]
 }
+
+// GET /reports/finance (owner). Rumus laba dihitung backend, jangan dihitung ulang di frontend.
+export interface FinanceDaily {
+  date: string; net_sales: number; operating_expenses: number; purchases_total: number
+  cogs: number; display_shrink_value: number; net_profit: number
+}
+export interface Finance {
+  net_sales: number; discount_sum: number; transactions_count: number; void_count: number
+  cogs: number; gross_profit: number; display_shrink_value: number
+  operating_expenses: number; purchases_total: number; total_spending: number
+  net_profit: number; cash_flow: number
+  by_payment_method: { cash: { count: number; total: number }; qris: { count: number; total: number } }
+  daily: FinanceDaily[]
+}
