@@ -32,3 +32,8 @@ export function parseKg(s: string): number | null {
   const v = parseFloat(s.replace(',', '.'))
   return Number.isFinite(v) && v > 0 && v <= 1000 ? Math.round(v * 1000) : null
 }
+
+export function parseKgZero(s: string): number | null {
+  const v = parseFloat(s.replace(',', '.'))
+  return Number.isFinite(v) && v >= 0 && v <= 100000 ? Math.round(v * 1000) : null
+}

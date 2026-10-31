@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom
 import AppShell from './components/AppShell'
 import { useAuth, type User } from './lib/auth'
 import { homeFor } from './lib/roles'
+import BarangPage from './pages/BarangPage'
 import KasirPage from './pages/KasirPage'
 import LaporanPage from './pages/LaporanPage'
 import LoginPage from './pages/LoginPage'
@@ -40,7 +41,7 @@ export default function App() {
             <Route path="/riwayat" element={<RiwayatPage />} />
             <Route element={<RequireRole role="owner" />}>
               <Route path="/laporan" element={<LaporanPage />} />
-              <Route path="/barang" element={<Placeholder name="Barang & Stok" />} />
+              <Route path="/barang" element={<BarangPage />} />
               <Route path="/pengeluaran" element={<Placeholder name="Pengeluaran" />} />
             </Route>
           </Route>

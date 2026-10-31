@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Banknote, CalendarDays, Scale, ShoppingCart, Wallet } from 'lucide-react'
+import { AlertTriangle, Banknote, CalendarDays, Scale, ShoppingCart, Wallet } from 'lucide-react'
 import { api } from '../lib/api'
 import { addDays, diffDays, eachDay, fmtLong, fmtShort, monthEnd, monthStart, todayWib } from '../lib/dates'
 import { compactRp, rupiah, rupiahSigned } from '../lib/format'
@@ -124,6 +124,13 @@ export default function LaporanPage() {
         <div role="alert" className="rounded-xl border border-danger/30 bg-danger/5 p-4 text-sm text-danger">
           {q.error instanceof Error ? q.error.message : 'Gagal memuat laporan.'}
           <button onClick={() => q.refetch()} className="ml-2 font-semibold underline">Coba lagi</button>
+        </div>
+      )}
+
+      {!!f?.shortfall_count && (
+        <div role="alert" className="flex items-start gap-2 rounded-xl border border-danger/40 bg-danger/5 p-3 text-sm text-danger">
+          <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+          <p><b>{f.shortfall_count} penjualan</b> terjadi saat stok sistem kurang, jadi HPP-nya belum lengkap dan laba bisa terlihat lebih tinggi dari kenyataan. Catat kulak dan sortir agar stok sistem sesuai.</p>
         </div>
       )}
 

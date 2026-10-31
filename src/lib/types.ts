@@ -38,5 +38,24 @@ export interface Finance {
   operating_expenses: number; purchases_total: number; total_spending: number
   net_profit: number; cash_flow: number
   by_payment_method: { cash: { count: number; total: number }; qris: { count: number; total: number } }
+  shortfall_count?: number // penjualan yang terjadi saat stok sistem kurang (HPP belum lengkap)
   daily: FinanceDaily[]
+}
+
+// Barang & stok (owner). Berat selalu string 3 desimal.
+export interface ProductAdmin extends Product { stock_kg: string; stock_value: number }
+export interface StockLot { lot_id: number; cleaned_at: string; stock_weight_kg: string; unit_cost: number | null; inventory_value: number }
+export interface StockRow { product_id: number; product_name: string; stock_weight_kg: string; inventory_value: number; lots: StockLot[] }
+export interface StockReportProduct {
+  product_id: number; name: string; is_active: boolean; stock_kg: string; stock_value: number
+  sold_kg: string; display_shrink_kg: string; display_shrink_value: number; last_count_date: string | null
+}
+export interface StockReport {
+  from: string; to: string; incoming_gross_kg: string; pending_gross_kg: string; clean_kg: string; cleaning_shrink_kg: string
+  sold_kg: string; display_shrink_kg: string; display_shrink_value: number; stock_ready_kg: string; stock_value: number
+  products: StockReportProduct[]
+}
+export interface StockCount {
+  id: number; product_id: number; product_name: string; counted_weight_kg: string; system_weight_kg: string
+  diff_kg: string; unit_cost_avg: number | null; loss_value: number; counted_at: string; notes: string | null
 }
