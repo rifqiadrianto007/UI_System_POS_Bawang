@@ -59,3 +59,17 @@ export interface StockCount {
   id: number; product_id: number; product_name: string; counted_weight_kg: string; system_weight_kg: string
   diff_kg: string; unit_cost_avg: number | null; loss_value: number; counted_at: string; notes: string | null
 }
+
+// Kulak (purchase). status: "open" (label Draft) atau "finalized" (label Final).
+export interface Supplier { id: number; name: string; phone: string | null; note: string | null }
+export interface PurchaseLot {
+  id: number; purchase_id: number; product_id: number; product: Product
+  clean_weight_kg: string; unit_cost: number | null; cleaned_at: string; notes: string | null
+}
+export interface Purchase {
+  id: number; supplier_id: number; supplier: Supplier; purchased_at: string
+  gross_weight_kg: string; price_per_kg: number; total_cost: number; notes: string | null
+  status: 'open' | 'finalized'; editable: boolean
+  lots_total_kg: string; cleaning_shrink_kg: string; cost_per_clean_kg: number | null; clean_weight_kg: string | null
+  finalized_at: string | null; lots: PurchaseLot[]
+}
