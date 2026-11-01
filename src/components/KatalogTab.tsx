@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { AlertTriangle, Pencil, Plus, Power, Search } from 'lucide-react'
+import { AlertTriangle, History, Pencil, Plus, Power, Search } from 'lucide-react'
+import PriceHistoryModal from './PriceHistoryModal'
 import ProductFormModal from './ProductFormModal'
 import { useToast } from './Toast'
 import { api } from '../lib/api'
@@ -17,6 +18,7 @@ export default function KatalogTab() {
   const [filter, setFilter] = useState<Filter>('all')
   const [editing, setEditing] = useState<ProductAdmin | 'new' | null>(null)
   const [busyId, setBusyId] = useState<number | null>(null)
+  const [hist, setHist] = useState<ProductAdmin | null>(null)
 
   const q = useQuery({ queryKey: ['products-admin'], queryFn: () => api<{ data: ProductAdmin[] }>('/products').then((r) => r.data) })
   const all = q.data ?? []
@@ -86,7 +88,7 @@ export default function KatalogTab() {
                       <td className="px-4 py-3 text-right">{rupiah(p.price_retail)}</td><td className="px-4 py-3 text-right">{rupiah(p.price_3kg)}</td><td className="px-4 py-3 text-right">{rupiah(p.price_5kg)}</td>
                       <td className={`px-4 py-3 text-right whitespace-nowrap ${neg ? 'font-bold text-danger' : ''}`}>{formatKgStr(p.stock_kg)} kg</td>
                       <td className="px-4 py-3 text-center"><StatusPill active={p.is_active} /></td>
-                      <td className="px-4 py-3"><Actions p={p} busy={busyId === p.id} onEdit={() => setEditing(p)} onToggle={() => toggle(p)} /></td>
+                      <td className="px-4 py-3"><Actions p={p} busy={busyId === p.id} onEdit={() => setEditing(p)} onHistory={() => setHist(p)} onToggle={() => toggle(p)} /></td>
                     </tr>
                   )
                 })}
@@ -101,7 +103,7 @@ export default function KatalogTab() {
                 <p className="mt-1 text-xs text-ink-muted">Ecer {rupiah(p.price_retail)} &middot; 3 kg {rupiah(p.price_3kg)} &middot; 5 kg {rupiah(p.price_5kg)}</p>
                 <div className="mt-2 flex items-center justify-between border-t border-surface-border pt-2">
                   <p className={`text-sm ${parseFloat(p.stock_kg) < 0 ? 'font-bold text-danger' : ''}`}>Stok {formatKgStr(p.stock_kg)} kg</p>
-                  <Actions p={p} busy={busyId === p.id} onEdit={() => setEditing(p)} onToggle={() => toggle(p)} />
+                  <Actions p={p} busy={busyId === p.id} onEdit={() => setEditing(p)} onHistory={() => setHist(p)} onToggle={() => toggle(p)} />
                 </div>
               </li>
             ))}
@@ -109,6 +111,7 @@ export default function KatalogTab() {
         </>
       )}
 
+      {hist && <PriceHistoryModal product={hist} onClose={() => setHist(null)} />}
       {editing && <ProductFormModal product={editing === 'new' ? undefined : editing} onClose={() => setEditing(null)} />}
     </div>
   )
@@ -118,10 +121,11 @@ function StatusPill({ active }: { active: boolean }) {
   return <span className={`inline-block rounded-full px-3 py-0.5 text-xs font-semibold ${active ? 'bg-brand text-white' : 'border border-surface-border bg-surface text-ink-muted'}`}>{active ? 'Aktif' : 'Nonaktif'}</span>
 }
 
-function Actions({ p, busy, onEdit, onToggle }: { p: ProductAdmin; busy: boolean; onEdit: () => void; onToggle: () => void }) {
+function Actions({ p, busy, onEdit, onHistory, onToggle }: { p: ProductAdmin; busy: boolean; onEdit: () => void; onHistory: () => void; onToggle: () => void }) {
   return (
     <div className="flex justify-center">
       <button onClick={onEdit} aria-label={`Ubah ${p.name}`} className="rounded-lg p-2 text-brand hover:bg-surface"><Pencil size={18} /></button>
+      <button onClick={onHistory} aria-label={`Riwayat harga ${p.name}`} title="Riwayat harga" className="rounded-lg p-2 text-brand hover:bg-surface"><History size={18} /></button>
       <button onClick={onToggle} disabled={busy} aria-label={p.is_active ? `Nonaktifkan ${p.name}` : `Aktifkan ${p.name}`} title={p.is_active ? 'Nonaktifkan' : 'Aktifkan'}
         className="rounded-lg p-2 text-danger hover:bg-surface disabled:opacity-40"><Power size={18} /></button>
     </div>

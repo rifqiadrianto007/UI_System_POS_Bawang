@@ -58,6 +58,7 @@ export interface StockReport {
 export interface StockCount {
   id: number; product_id: number; product_name: string; counted_weight_kg: string; system_weight_kg: string
   diff_kg: string; unit_cost_avg: number | null; loss_value: number; counted_at: string; notes: string | null
+  status?: 'active' | 'cancelled'; cancelled_at?: string | null; cancelled_by_name?: string | null; cancel_reason?: string | null
 }
 
 // Kulak (purchase). status: "open" (label Draft) atau "finalized" (label Final).
@@ -72,4 +73,17 @@ export interface Purchase {
   status: 'open' | 'finalized'; editable: boolean
   lots_total_kg: string; cleaning_shrink_kg: string; cost_per_clean_kg: number | null; clean_weight_kg: string | null
   finalized_at: string | null; lots: PurchaseLot[]
+}
+
+export interface PriceHistoryRow { id: number; product_id: number; price_retail: number; price_3kg: number; price_5kg: number; changed_by: number; changed_at: string }
+
+// Pengeluaran operasional. Jenis = teks bebas (name). Backend masih mewajibkan category, frontend selalu mengirim "lainnya".
+export interface Expense {
+  id: number; name: string; category: string; category_label: string; amount: number
+  spent_at: string; notes: string | null; created_by_name: string; created_at: string
+}
+export interface ExpenseList {
+  data: Expense[]
+  meta: { total: number; current_page: number; last_page: number; per_page: number; from: number | null; to: number | null }
+  summary: { total_amount: number; count: number }
 }

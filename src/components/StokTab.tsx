@@ -1,9 +1,12 @@
 import { Fragment, useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ChevronDown, ChevronRight, ClipboardCheck, Package, ShoppingCart, TrendingDown, Truck } from 'lucide-react'
+import ReasonModal from './ReasonModal'
 import StatCard from './StatCard'
 import StockCountModal from './StockCountModal'
+import { useToast } from './Toast'
 import { dateTime } from './TransactionDetailModal'
+import { refreshStock } from '../hooks/usePurchases'
 import { api } from '../lib/api'
 import { addDays, fmtLong, monthEnd, monthStart, todayWib } from '../lib/dates'
 import { formatKgStr, rupiah } from '../lib/format'
@@ -12,6 +15,9 @@ import type { StockCount, StockReport, StockRow } from '../lib/types'
 const kg = (s: string) => `${formatKgStr(s)} kg`
 
 export default function StokTab() {
+  const qc = useQueryClient()
+  const toast = useToast()
+  const [cancelling, setCancelling] = useState<StockCount | null>(null)
   const today = useMemo(todayWib, [])
   const [period, setPeriod] = useState<'month' | 'lastmonth'>('month')
   const [open, setOpen] = useState<number | null>(null)
@@ -25,6 +31,19 @@ export default function StokTab() {
   const counts = useQuery({ queryKey: ['stock-counts'], queryFn: () => api<{ data: StockCount[] }>('/stock-counts').then((r) => r.data) })
   const r = report.data
   const lotsOf = (id: number) => stock.data?.find((s) => s.product_id === id)?.lots ?? []
+  // Hanya hitung ulang aktif TERBARU per barang yang bisa dibatalkan (aturan backend; yang lain ditolak 409).
+  const latestActive = new Set<number>()
+  const seen = new Set<number>()
+  ;[...(counts.data ?? [])].sort((a, b) => b.counted_at.localeCompare(a.counted_at) || b.id - a.id).forEach((c) => {
+    if (c.status === 'cancelled' || seen.has(c.product_id)) return
+    seen.add(c.product_id); latestActive.add(c.id)
+  })
+  async function cancel(reason: string) {
+    await api(`/stock-counts/${cancelling!.id}`, { method: 'DELETE', body: JSON.stringify({ reason }) })
+    await Promise.all([refreshStock(qc), qc.invalidateQueries({ queryKey: ['stock-counts'] })])
+    toast.success('Hitung ulang dibatalkan. Susut dikembalikan.')
+    setCancelling(null)
+  }
 
   return (
     <div className="space-y-4">
@@ -113,18 +132,28 @@ export default function StokTab() {
           <p className="rounded-xl bg-surface py-6 text-center text-sm text-ink-muted">Belum ada hitung ulang.</p>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-surface-border">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead className="bg-surface text-left text-xs font-semibold"><tr><th className="px-4 py-2">Waktu</th><th className="px-4 py-2">Barang</th><th className="px-4 py-2 text-right">Sistem</th><th className="px-4 py-2 text-right">Hasil hitung</th><th className="px-4 py-2 text-right">Selisih</th><th className="px-4 py-2 text-right">Nilai susut</th></tr></thead>
-              <tbody className="divide-y divide-surface-border">{counts.data!.map((c) => (
-                <tr key={c.id}><td className="px-4 py-2 whitespace-nowrap">{dateTime(c.counted_at)}</td><td className="px-4 py-2">{c.product_name}</td>
-                  <td className="px-4 py-2 text-right">{kg(c.system_weight_kg)}</td><td className="px-4 py-2 text-right">{kg(c.counted_weight_kg)}</td>
-                  <td className={`px-4 py-2 text-right ${parseFloat(c.diff_kg) < 0 ? 'font-semibold text-danger' : ''}`}>{kg(c.diff_kg)}</td><td className="px-4 py-2 text-right">{rupiah(c.loss_value)}</td></tr>
-              ))}</tbody>
+            <table className="w-full min-w-[760px] text-sm">
+              <thead className="bg-surface text-left text-xs font-semibold"><tr><th className="px-4 py-2">Waktu</th><th className="px-4 py-2">Barang</th><th className="px-4 py-2 text-right">Sistem</th><th className="px-4 py-2 text-right">Hasil hitung</th><th className="px-4 py-2 text-right">Selisih</th><th className="px-4 py-2 text-right">Nilai susut</th><th className="px-4 py-2">Status</th><th className="px-4 py-2" /></tr></thead>
+              <tbody className="divide-y divide-surface-border">{counts.data!.map((c) => {
+                const off = c.status === 'cancelled'
+                return (
+                  <tr key={c.id} className={off ? 'text-ink-muted' : ''}>
+                    <td className="px-4 py-2 whitespace-nowrap">{dateTime(c.counted_at)}</td><td className="px-4 py-2">{c.product_name}</td>
+                    <td className="px-4 py-2 text-right">{kg(c.system_weight_kg)}</td><td className="px-4 py-2 text-right">{kg(c.counted_weight_kg)}</td>
+                    <td className={`px-4 py-2 text-right ${off ? 'line-through' : parseFloat(c.diff_kg) < 0 ? 'font-semibold text-danger' : ''}`}>{kg(c.diff_kg)}</td>
+                    <td className={`px-4 py-2 text-right ${off ? 'line-through' : ''}`}>{rupiah(c.loss_value)}</td>
+                    <td className="px-4 py-2 whitespace-nowrap text-xs">{off ? <span title={c.cancel_reason ?? ''}>Dibatalkan{c.cancel_reason ? ` (${c.cancel_reason})` : ''}</span> : 'Aktif'}</td>
+                    <td className="px-4 py-2 text-right">{latestActive.has(c.id) && <button onClick={() => setCancelling(c)} className="rounded-lg border border-danger px-3 py-1 text-xs font-semibold text-danger hover:bg-surface">Batalkan</button>}</td>
+                  </tr>
+                )
+              })}</tbody>
             </table>
           </div>
         )}
       </section>
 
+      {cancelling && <ReasonModal title="Batalkan hitung ulang" confirmLabel="Batalkan" onConfirm={cancel} onClose={() => setCancelling(null)}
+        description={`Hitung ulang ${cancelling.product_name} (selisih ${kg(cancelling.diff_kg)}, ${rupiah(cancelling.loss_value)}) dibatalkan dan susutnya dikembalikan. Hanya hitung ulang terakhir untuk barang ini yang bisa dibatalkan.`} />}
       {counting && <StockCountModal product={counting} onClose={() => setCounting(null)} />}
     </div>
   )
