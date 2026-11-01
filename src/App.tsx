@@ -7,7 +7,7 @@ import BarangPage from './pages/BarangPage'
 import KasirPage from './pages/KasirPage'
 import LaporanPage from './pages/LaporanPage'
 import LoginPage from './pages/LoginPage'
-import Placeholder from './pages/Placeholder'
+import PengeluaranPage from './pages/PengeluaranPage'
 import RiwayatPage from './pages/RiwayatPage'
 
 const Spinner = () => <div className="grid h-full place-items-center text-brand"><Loader2 className="animate-spin" /></div>
@@ -42,7 +42,7 @@ export default function App() {
             <Route element={<RequireRole role="owner" />}>
               <Route path="/laporan" element={<LaporanPage />} />
               <Route path="/barang" element={<BarangPage />} />
-              <Route path="/pengeluaran" element={<Placeholder name="Pengeluaran" />} />
+              <Route path="/pengeluaran" element={<PengeluaranPage />} />
             </Route>
           </Route>
         </Route>
