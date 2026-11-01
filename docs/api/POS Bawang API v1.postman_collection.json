@@ -2163,6 +2163,41 @@
               ]
             }
           }
+        },
+        {
+          "name": "Cancel Stock Count",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Koreksi hitung ulang\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/stock-counts/{{stock_count_id}}",
+              "host": [
+                "{{base_url}}{{api_prefix}}"
+              ],
+              "path": [
+                "stock-counts",
+                "{{stock_count_id}}"
+              ]
+            }
+          }
         }
       ]
     },
