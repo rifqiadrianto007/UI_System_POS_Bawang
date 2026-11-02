@@ -1,5 +1,5 @@
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) || '/api/v1'
-const TOKEN_KEY = 'pos_token'
+export const TOKEN_KEY = 'pos_token'
 
 export const tokenStore = {
   get: () => localStorage.getItem(TOKEN_KEY),
@@ -42,8 +42,12 @@ export async function api<T>(path: string, init: RequestInit & { auth?: boolean 
   if (!res.ok) {
     if (res.status === 401 && auth) onUnauthorized()
     // Pesan mentah dari error 5xx (mis. SQL) tidak boleh sampai ke layar kasir.
-    if (res.status >= 500) console.error('[API]', res.status, body?.message)
-    const message = res.status >= 500 ? 'Terjadi gangguan di server. Coba lagi, atau hubungi admin jika berulang.' : (body?.message ?? 'Terjadi kesalahan.')
+    if (res.status >= 500 && import.meta.env.DEV) console.error('[API]', res.status, body?.message) // jangan bocorkan detail server di produksi
+    const retry = Number(res.headers.get('Retry-After'))
+    const message =
+      res.status >= 500 ? 'Terjadi gangguan di server. Coba lagi, atau hubungi admin jika berulang.' :
+      res.status === 429 ? `Terlalu banyak percobaan. Tunggu${retry > 0 ? ` ${retry} detik` : ' sebentar'} lalu coba lagi.` :
+      (body?.message ?? 'Terjadi kesalahan.')
     throw new ApiError(message, res.status, body?.errors)
   }
   return body as T

@@ -4,6 +4,7 @@ import { ArrowRight, Eye, EyeOff, Loader2, Lock, Settings, User } from 'lucide-r
 import { useAuth } from '../lib/auth'
 import { ApiError } from '../lib/api'
 import { homeFor } from '../lib/roles'
+import { FLASH_KEY } from '../config/security'
 
 export default function LoginPage() {
   const { user, login } = useAuth()
@@ -11,6 +12,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [error, setError] = useState('')
+  // Pesan dari logout otomatis (sesi berakhir). Dibaca sekali lalu dihapus.
+  const [notice] = useState(() => { const m = sessionStorage.getItem(FLASH_KEY); if (m) sessionStorage.removeItem(FLASH_KEY); return m })
   const [busy, setBusy] = useState(false)
 
   if (user) return <Navigate to={homeFor(user.role)} replace />
@@ -62,6 +65,7 @@ export default function LoginPage() {
             </span>
           </label>
 
+          {notice && !error && <p role="status" className="rounded-lg border border-surface-border bg-surface px-3 py-2 text-sm text-ink">{notice}</p>}
           {error && <p role="alert" className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">{error}</p>}
 
           <button type="submit" disabled={busy || !username || !password}

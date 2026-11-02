@@ -1,7 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { Download, Loader2, Printer } from 'lucide-react'
+import { useState } from 'react'
+import { AlertTriangle, Ban, Download, Loader2, Printer } from 'lucide-react'
 import Modal from './Modal'
+import ReasonModal from './ReasonModal'
 import { api } from '../lib/api'
+import { useAuth } from '../lib/auth'
+import { useVoidTx } from '../hooks/useVoidTx'
 import { formatKgStr, formatReceiptDate, rupiah } from '../lib/format'
 import type { useReceiptPrint } from '../hooks/useReceiptPrint'
 import type { TxDetail, TxStatus } from '../lib/types'
@@ -21,6 +25,10 @@ function Info({ label, children }: { label: string; children: React.ReactNode })
 export default function TransactionDetailModal({ id, onClose, rp }: { id: number; onClose: () => void; rp: ReturnType<typeof useReceiptPrint> }) {
   const q = useQuery({ queryKey: ['transaction', id], queryFn: () => api<{ data: TxDetail }>(`/transactions/${id}`).then((r) => r.data) })
   const t = q.data
+  const { user } = useAuth()
+  const owner = user?.role === 'owner'
+  const voidTx = useVoidTx()
+  const [voiding, setVoiding] = useState(false)
   const isVoid = !!t && t.status !== 'completed'
   const busy = rp.busyId === id
   const btn = 'flex items-center justify-center gap-2 rounded-xl py-3 font-semibold disabled:opacity-40'
@@ -36,6 +44,7 @@ export default function TransactionDetailModal({ id, onClose, rp }: { id: number
             </button>
           </div>
           <button onClick={() => t && rp.pdf(id, t.amount_paid)} disabled={!t || isVoid || busy} className={`${btn} w-full border border-brand text-brand`}><Download size={16} /> Unduh PDF 58 mm</button>
+          {owner && t && !isVoid && <button onClick={() => setVoiding(true)} className={`${btn} w-full border border-danger text-danger`}><Ban size={16} /> Batalkan transaksi</button>}
           {rp.error && <p role="alert" className="text-center text-xs text-danger">{rp.error}</p>}
         </div>
       }>
@@ -67,7 +76,7 @@ export default function TransactionDetailModal({ id, onClose, rp }: { id: number
           <ul className="space-y-2">
             {t.items.map((i, k) => (
               <li key={k} className="flex items-start justify-between gap-3 rounded-xl bg-surface p-3">
-                <div className="min-w-0"><p className="text-sm font-bold">{i.product_name}</p><p className="text-xs text-ink-muted">{rupiah(i.price_per_kg)} x {formatKgStr(i.weight_kg)}kg</p></div>
+                <div className="min-w-0"><p className="text-sm font-bold">{i.product_name}</p><p className="text-xs text-ink-muted">{rupiah(i.price_per_kg)} x {formatKgStr(i.weight_kg)}kg{owner && i.cogs !== undefined ? ` · HPP ${rupiah(i.cogs)}` : ''}</p></div>
                 <p className="shrink-0 text-sm font-bold text-brand">{rupiah(i.line_total)}</p>
               </li>
             ))}
@@ -87,8 +96,20 @@ export default function TransactionDetailModal({ id, onClose, rp }: { id: number
             <div className="flex justify-between text-ink-muted"><span>{METHOD[t.payment_method]}</span><span className="text-ink">{rupiah(t.amount_paid ?? t.total)}</span></div>
             {!!t.change && t.change > 0 && <div className="flex justify-between font-bold text-brand"><span>Kembalian</span><span>{rupiah(t.change)}</span></div>}
           </div>
+
+          {owner && t.cogs !== undefined && (
+            <div className="mt-4 rounded-xl bg-surface p-3 text-sm">
+              <p className="mb-1 text-xs font-bold text-ink-muted">Khusus owner</p>
+              <div className="flex justify-between"><span className="text-ink-muted">HPP transaksi</span><span>{rupiah(t.cogs)}</span></div>
+              <div className="flex justify-between font-bold"><span>Laba kotor transaksi</span><span className={t.total - t.cogs < 0 ? 'text-danger' : 'text-brand'}>{t.total - t.cogs < 0 ? '-' : ''}{rupiah(Math.abs(t.total - t.cogs))}</span></div>
+              {t.has_shortfall && <p className="mt-2 flex items-start gap-2 text-xs text-danger"><AlertTriangle size={14} className="mt-0.5 shrink-0" /> HPP belum lengkap: barang ini terjual saat stok sistem kurang, jadi laba kotor terlihat lebih tinggi dari kenyataan.</p>}
+            </div>
+          )}
         </>
       )}
+      {voiding && t && <ReasonModal title="Batalkan transaksi" confirmLabel="Batalkan transaksi" onClose={() => setVoiding(false)}
+        onConfirm={async (reason) => { await voidTx(id, reason); setVoiding(false) }}
+        description={`Transaksi ${t.invoice_no} (${rupiah(t.total)}) dibatalkan dan tidak dihitung lagi di laporan. Tidak ada fitur untuk mengurungkan pembatalan.`} />}
     </Modal>
   )
 }
