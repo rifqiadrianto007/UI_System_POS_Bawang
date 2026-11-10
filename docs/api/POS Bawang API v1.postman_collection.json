@@ -1830,7 +1830,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"supplier_id\": 1,\n  \"purchased_at\": \"2026-10-19\",\n  \"gross_weight_kg\": \"100.000\",\n  \"price_per_kg\": 17000,\n  \"notes\": \"Batch contoh doc 01\"\n}",
+              "raw": "{\n  \"supplier_id\": 1,\n  \"purchased_at\": \"2026-10-19\",\n  \"jenis\": \"merah\",\n  \"gross_weight_kg\": \"100.000\",\n  \"price_per_kg\": 17000,\n  \"notes\": \"Batch contoh doc 01\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1907,7 +1907,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"supplier_id\": 1,\n  \"purchased_at\": \"2026-10-22\",\n  \"gross_weight_kg\": \"100.000\",\n  \"price_per_kg\": 17000,\n  \"notes\": \"Batch diperbarui\"\n}",
+              "raw": "{\n  \"supplier_id\": 1,\n  \"purchased_at\": \"2026-10-22\",\n  \"jenis\": \"merah\",\n  \"gross_weight_kg\": \"100.000\",\n  \"price_per_kg\": 17000,\n  \"notes\": \"Batch diperbarui\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1964,7 +1964,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"product_id\": {{product_id}},\n  \"clean_weight_kg\": \"40.000\",\n  \"cleaned_at\": \"2026-10-22\",\n  \"notes\": \"Hasil sortir grade A\"\n}",
+              "raw": "{\n  \"product_id\": {{product_id}},\n  \"weight_kg\": \"40.000\",\n  \"sorted_at\": \"2026-10-22\",\n  \"notes\": \"Hasil sortir grade A\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1980,43 +1980,6 @@
                 "purchases",
                 "{{purchase_id}}",
                 "lots"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Update Open Purchase Lot",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"product_id\": \"{{product_id}}\",\n  \"clean_weight_kg\": \"40.000\",\n  \"cleaned_at\": \"2026-10-22\",\n  \"notes\": \"Berat sortir diperbarui\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}{{api_prefix}}/purchases/{{purchase_id}}/lots/{{lot_id}}",
-              "host": [
-                "{{base_url}}{{api_prefix}}"
-              ],
-              "path": [
-                "purchases",
-                "{{purchase_id}}",
-                "lots",
-                "{{lot_id}}"
               ]
             }
           }
@@ -2046,7 +2009,7 @@
           }
         },
         {
-          "name": "Finalize Purchase",
+          "name": "Close Purchase",
           "request": {
             "method": "POST",
             "header": [
@@ -2056,15 +2019,29 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}{{api_prefix}}/purchases/1/finalize",
+              "raw": "{{base_url}}{{api_prefix}}/purchases/1/close",
               "host": [
                 "{{base_url}}{{api_prefix}}"
               ],
               "path": [
                 "purchases",
                 "1",
-                "finalize"
+                "close"
               ]
+            }
+          }
+        },
+        {
+          "name": "Reopen Purchase",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/purchases/{{purchase_id}}/reopen",
+              "host": ["{{base_url}}{{api_prefix}}"],
+              "path": ["purchases", "{{purchase_id}}", "reopen"]
             }
           }
         },
@@ -2099,9 +2076,8 @@
                   "    const body = pm.response.json();",
                   "    pm.expect(body.data).to.be.an('array');",
                   "    if (body.data.length > 0) {",
-                  "        pm.expect(body.data[0]).to.have.property('stock_weight_kg');",
-                  "        pm.expect(body.data[0]).to.have.property('lots');",
-                  "        pm.expect(body.data[0].inventory_value).to.be.a('number');",
+                  "        pm.expect(body.data[0]).to.have.property('stock_kg');",
+                  "        pm.expect(body.data[0].stock_value).to.be.a('number');",
                   "    }",
                   "});"
                 ]

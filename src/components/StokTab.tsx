@@ -1,18 +1,26 @@
 import { Fragment, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, ClipboardCheck, Package, ShoppingCart, TrendingDown, Truck } from 'lucide-react'
+import { ChevronDown, ChevronRight, ClipboardCheck, Package, ShoppingCart, Truck } from 'lucide-react'
 import ReasonModal from './ReasonModal'
 import StatCard from './StatCard'
 import StockCountModal from './StockCountModal'
 import { useToast } from './Toast'
 import { dateTime } from './TransactionDetailModal'
-import { refreshStock } from '../hooks/usePurchases'
+import { refreshStock, usePurchases } from '../hooks/usePurchases'
 import { api } from '../lib/api'
 import { addDays, fmtLong, monthEnd, monthStart, todayWib } from '../lib/dates'
 import { formatKgStr, rupiah } from '../lib/format'
-import type { StockCount, StockReport, StockRow } from '../lib/types'
+import type { StockCount, StockReport, StockResponse } from '../lib/types'
 
-const kg = (s: string) => `${formatKgStr(s)} kg`
+const gramsOrZero = (value: unknown) => {
+  const n = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''))
+  return Number.isFinite(n) ? Math.max(0, Math.round(n * 1000)) : 0
+}
+const kg = (s: unknown) => `${formatKgStr(String(gramsOrZero(s) / 1000))} kg`
+const numericKg = (value: unknown) => {
+  const n = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''))
+  return Number.isFinite(n) ? n : 0
+}
 
 export default function StokTab() {
   const qc = useQueryClient()
@@ -21,22 +29,26 @@ export default function StokTab() {
   const today = useMemo(todayWib, [])
   const [period, setPeriod] = useState<'month' | 'lastmonth'>('month')
   const [open, setOpen] = useState<number | null>(null)
-  const [counting, setCounting] = useState<{ id: number; name: string; stockKg: string } | null>(null)
+  const [counting, setCounting] = useState<{ id: number; name: string; jenis: 'merah' | 'putih'; stockKg: string } | null>(null)
 
   const last = addDays(monthStart(today), -1)
   const { from, to } = period === 'month' ? { from: monthStart(today), to: today } : { from: monthStart(last), to: monthEnd(last) }
 
   const report = useQuery({ queryKey: ['stock-report', from, to], queryFn: () => api<{ data: StockReport }>(`/reports/stock?from=${from}&to=${to}`).then((r) => r.data) })
-  const stock = useQuery({ queryKey: ['stock'], queryFn: () => api<{ data: StockRow[] }>('/stock').then((r) => r.data) })
+  const stock = useQuery({ queryKey: ['stock'], queryFn: () => api<StockResponse>('/stock') })
   const counts = useQuery({ queryKey: ['stock-counts'], queryFn: () => api<{ data: StockCount[] }>('/stock-counts').then((r) => r.data) })
+  const purchases = usePurchases()
   const r = report.data
-  const lotsOf = (id: number) => stock.data?.find((s) => s.product_id === id)?.lots ?? []
+  const stockRows = Array.isArray(stock.data?.data) ? stock.data.data : []
+  const stockTotals = stock.data?.totals
+  const pendingGrams = (purchases.data ?? []).reduce((sum, purchase) => sum + gramsOrZero(purchase.remaining_weight_kg), 0)
   // Hanya hitung ulang aktif TERBARU per barang yang bisa dibatalkan (aturan backend; yang lain ditolak 409).
   const latestActive = new Set<number>()
-  const seen = new Set<number>()
+  const seen = new Set<string>()
   ;[...(counts.data ?? [])].sort((a, b) => b.counted_at.localeCompare(a.counted_at) || b.id - a.id).forEach((c) => {
-    if (c.status === 'cancelled' || seen.has(c.product_id)) return
-    seen.add(c.product_id); latestActive.add(c.id)
+    const key = `${c.purchase_id}:${c.product_id}`
+    if (c.status === 'cancelled' || seen.has(key)) return
+    seen.add(key); latestActive.add(c.id)
   })
   async function cancel(reason: string) {
     await api(`/stock-counts/${cancelling!.id}`, { method: 'DELETE', body: JSON.stringify({ reason }) })
@@ -63,19 +75,19 @@ export default function StokTab() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <StatCard icon={Package} label="Stok siap jual" value={r ? kg(r.stock_ready_kg) : '...'} note={r ? `Nilai ${rupiah(r.stock_value)}` : undefined} />
-        <StatCard icon={Truck} label="Belum disortir" value={r ? kg(r.pending_gross_kg) : '...'} note="Kulak belum difinalisasi (berat kotor)" />
-        <StatCard icon={ShoppingCart} label="Terjual" value={r ? kg(r.sold_kg) : '...'} />
-        <StatCard icon={TrendingDown} label="Susut pembersihan" value={r ? kg(r.cleaning_shrink_kg) : '...'}
-          note={r ? `Susut display ${kg(r.display_shrink_kg)}${r.display_shrink_value ? ` (${rupiah(r.display_shrink_value)})` : ''}` : undefined} />
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+        <StatCard icon={Package} label="Stok display" value={kg(stockTotals?.display_kg)} />
+        <StatCard icon={Truck} label="Stok gudang" value={kg(stockTotals?.warehouse_kg)} />
+        <StatCard icon={Truck} label="Belum disortir" value={kg(pendingGrams / 1000)} note="Total sisa batch kulak" />
+        <StatCard icon={Package} label="Nilai persediaan" value={rupiah(stockTotals?.inventory_value ?? 0)} />
+        <StatCard icon={ShoppingCart} label="Terjual" value={kg(r?.sold_kg)} />
       </div>
       <p className="text-xs text-ink-muted">Susut display baru tercatat setelah hitung ulang. Nol belum tentu berarti tidak ada susut. Stok sistem sama dengan stok yang tampil di display (display dan gudang tidak dipisah).</p>
 
       {report.isPending && <div className="h-40 animate-pulse rounded-xl bg-surface" />}
       {r && (
         <div className="overflow-x-auto rounded-xl border border-surface-border">
-          <table className="w-full min-w-[720px] text-sm">
+          <table className="w-full min-w-180 text-sm">
             <thead className="bg-surface text-left text-xs font-semibold">
               <tr>
                 <th className="px-4 py-3">Barang</th><th className="px-4 py-3 text-right">Stok</th><th className="px-4 py-3 text-right">Nilai stok</th>
@@ -83,8 +95,10 @@ export default function StokTab() {
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-border">
-              {r.products.map((p) => {
-                const neg = parseFloat(p.stock_kg) < 0
+              {(Array.isArray(r.products) ? r.products : []).map((p) => {
+                const stockRow = stockRows.find((s) => s.product_id === p.product_id)
+                const stockValue = stockRow?.stock_kg ?? p.stock_kg
+                const neg = numericKg(stockValue) < 0
                 const isOpen = open === p.product_id
                 return (
                   <Fragment key={p.product_id}>
@@ -93,29 +107,20 @@ export default function StokTab() {
                         <button onClick={() => setOpen(isOpen ? null : p.product_id)} className="flex items-center gap-1 font-medium" aria-expanded={isOpen}>
                           {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}{p.name}{!p.is_active && <span className="text-xs font-normal"> (nonaktif)</span>}
                         </button>
-                        {neg && <p className="ml-5 text-[11px] font-semibold text-danger">Stok minus: penjualan melebihi stok sistem</p>}
+                        {neg && <p className="ml-5 text-[11px] font-semibold text-danger">Peringatan: stok sistem kurang</p>}
                       </td>
-                      <td className={`px-4 py-3 text-right whitespace-nowrap ${neg ? 'font-bold text-danger' : ''}`}>{kg(p.stock_kg)}</td>
+                      <td className={`px-4 py-3 text-right whitespace-nowrap ${neg ? 'font-bold text-danger' : ''}`}>{neg ? `${formatKgStr(String(numericKg(stockValue)))} kg` : kg(stockValue)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">{rupiah(p.stock_value)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">{kg(p.sold_kg)}</td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">{kg(p.display_shrink_kg)}{p.display_shrink_value ? <span className="block text-[11px] text-ink-muted">{rupiah(p.display_shrink_value)}</span> : null}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-xs">{p.last_count_date ? fmtLong(p.last_count_date.slice(0, 10)) : 'Belum pernah'}</td>
                       <td className="px-4 py-3 text-center">
-                        <button onClick={() => setCounting({ id: p.product_id, name: p.name, stockKg: p.stock_kg })} className="inline-flex items-center gap-1 rounded-lg border border-brand px-3 py-1.5 text-xs font-semibold text-brand hover:bg-surface"><ClipboardCheck size={14} /> Hitung ulang</button>
+                        <button onClick={() => setCounting({ id: p.product_id, name: p.name, jenis: stockRow?.jenis ?? 'merah', stockKg: String(stockValue ?? '0') })} className="inline-flex items-center gap-1 rounded-lg border border-brand px-3 py-1.5 text-xs font-semibold text-brand hover:bg-surface"><ClipboardCheck size={14} /> Hitung ulang</button>
                       </td>
                     </tr>
                     {isOpen && (
                       <tr className="bg-surface/40"><td colSpan={7} className="px-4 py-3">
-                        {stock.isPending ? <p className="text-xs text-ink-muted">Memuat lot...</p> : lotsOf(p.product_id).length === 0 ? <p className="text-xs text-ink-muted">Belum ada lot. Stok masuk lewat kulak yang sudah disortir dan difinalisasi.</p> : (
-                          <table className="w-full max-w-xl text-xs">
-                            <thead className="text-left text-ink-muted"><tr><th className="py-1">Tanggal bersih</th><th className="py-1 text-right">Stok lot</th><th className="py-1 text-right">HPP per kg</th><th className="py-1 text-right">Nilai</th></tr></thead>
-                            <tbody>{lotsOf(p.product_id).map((l) => (
-                              <tr key={l.lot_id}><td className="py-1">{fmtLong(l.cleaned_at.slice(0, 10))}</td><td className="py-1 text-right">{kg(l.stock_weight_kg)}</td>
-                                <td className="py-1 text-right">{l.unit_cost === null ? 'belum ada' : rupiah(l.unit_cost)}</td><td className="py-1 text-right">{rupiah(l.inventory_value)}</td></tr>
-                            ))}</tbody>
-                          </table>
-                        )}
-                        <p className="mt-2 text-[11px] text-ink-muted">Penjualan mengambil lot tertua lebih dulu (FIFO).</p>
+                        <p className="text-xs text-ink-muted">Stok display berasal dari hitung ulang per batch kulak. Pilih tombol “Hitung ulang” untuk memilih batch secara eksplisit.</p>
                       </td></tr>
                     )}
                   </Fragment>
@@ -154,7 +159,7 @@ export default function StokTab() {
 
       {cancelling && <ReasonModal title="Batalkan hitung ulang" confirmLabel="Batalkan" onConfirm={cancel} onClose={() => setCancelling(null)}
         description={`Hitung ulang ${cancelling.product_name} (selisih ${kg(cancelling.diff_kg)}, ${rupiah(cancelling.loss_value)}) dibatalkan dan susutnya dikembalikan. Hanya hitung ulang terakhir untuk barang ini yang bisa dibatalkan.`} />}
-      {counting && <StockCountModal product={counting} onClose={() => setCounting(null)} />}
+      {counting && <StockCountModal product={counting} purchases={purchases.data ?? []} onClose={() => setCounting(null)} />}
     </div>
   )
 }

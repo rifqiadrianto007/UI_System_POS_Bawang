@@ -1,8 +1,8 @@
 import { ApiError } from './api'
 
 const LABEL: Record<string, string> = {
-  name: 'Nama', price_retail: 'Harga ecer', price_3kg: 'Harga 3 kg', price_5kg: 'Harga 5 kg',
-  counted_weight_kg: 'Berat hasil hitung', counted_at: 'Tanggal', product_id: 'Barang',
+  name: 'Nama', kind: 'Jenis', jenis: 'Jenis', price_retail: 'Harga ecer', price_5kg: 'Harga 5 kg',
+  counted_weight_kg: 'Berat hasil hitung', counted_at: 'Tanggal', product_id: 'Barang', purchase_id: 'Batch kulak',
 }
 
 // Backend memakai pesan bawaan Laravel berbahasa Inggris pada sebagian endpoint; terjemahkan yang umum.

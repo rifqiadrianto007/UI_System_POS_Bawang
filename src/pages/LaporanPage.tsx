@@ -67,7 +67,7 @@ export default function LaporanPage() {
   // Isi hari tanpa transaksi dengan nol agar grafik tidak melompat.
   const series = useMemo(() => {
     if (!f || rangeError) return []
-    const byDate = new Map((f.daily ?? []).map((d) => [d.date, d]))
+    const byDate = new Map((Array.isArray(f.daily) ? f.daily : []).map((d) => [d.date, d]))
     return eachDay(from, to).map((date) => {
       const d = { ...ZERO, ...(byDate.get(date) ?? {}) }
       return { ...d, date, label: fmtShort(date), spending: d.operating_expenses + d.purchases_total }
@@ -140,7 +140,7 @@ export default function LaporanPage() {
         <StatCard icon={Banknote} label="Total pendapatan" value={f ? rupiah(f.net_sales) : '...'} dim={dim} note="Setelah diskon" />
         <StatCard icon={Wallet} label="Total pengeluaran" value={f ? rupiah(f.total_spending) : '...'} dim={dim}
           note={f ? `Operasional ${rupiah(f.operating_expenses)} + kulak ${rupiah(f.purchases_total)}` : undefined} />
-        <StatCard icon={Scale} label="Laba" value={f ? rupiahSigned(f.cash_flow) : '...'} dim={dim} danger={!!f && f.cash_flow < 0} note="Selisih kas (pendapatan - pengeluaran)" />
+        <StatCard icon={Scale} label="Laba usaha" value={f ? rupiahSigned(f.net_profit) : '...'} dim={dim} danger={!!f && f.net_profit < 0} note="Dari backend" />
       </div>
 
       <section className="rounded-2xl border border-surface-border p-4 sm:p-5">
@@ -151,7 +151,8 @@ export default function LaporanPage() {
             <Row label="Pendapatan bersih" value={rupiah(f.net_sales)} note="Setelah diskon" />
             <Row label="HPP barang terjual" value={`-${rupiah(f.cogs)}`} />
             <Row label="Laba kotor" value={rupiahSigned(f.gross_profit)} bold danger={f.gross_profit < 0} />
-            <Row label="Susut display" value={`-${rupiah(f.display_shrink_value)}`} note="Baru tercatat setelah owner menjalankan hitung ulang stok. Nol belum tentu berarti tidak ada susut." />
+            <Row label="Susut" value={`${f.susut_kg ?? '-'} kg`} note="Informasi susut; tidak mengurangi laba." />
+            <Row label="Nilai susut pembersihan" value={rupiah(f.cleaning_loss_value)} note="Dari backend." />
             <Row label="Biaya operasional" value={`-${rupiah(f.operating_expenses)}`} />
             <Row label="Laba bersih" value={rupiahSigned(f.net_profit)} bold danger={f.net_profit < 0} />
           </div>
