@@ -23,7 +23,7 @@ export default function PriceHistoryModal({ product, onClose }: { product: { id:
       {rows.length > 0 && (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="text-left text-xs text-ink-muted"><tr><th className="py-2">Waktu</th><th className="py-2 text-right">Ecer</th><th className="py-2 text-right">3 kg</th><th className="py-2 text-right">5 kg</th></tr></thead>
+            <thead className="text-left text-xs text-ink-muted"><tr><th className="py-2">Waktu</th><th className="py-2 text-right">Ecer</th><th className="py-2 text-right">5 kg</th></tr></thead>
             <tbody className="divide-y divide-surface-border">
               {rows.map((r, i) => {
                 const prev = rows[i + 1]
@@ -31,7 +31,6 @@ export default function PriceHistoryModal({ product, onClose }: { product: { id:
                   <tr key={r.id}>
                     <td className="py-2 whitespace-nowrap">{dateTime(r.changed_at)}</td>
                     <td className="py-2 text-right">{rupiah(r.price_retail)}{delta(r.price_retail, prev?.price_retail)}</td>
-                    <td className="py-2 text-right">{rupiah(r.price_3kg)}{delta(r.price_3kg, prev?.price_3kg)}</td>
                     <td className="py-2 text-right">{rupiah(r.price_5kg)}{delta(r.price_5kg, prev?.price_5kg)}</td>
                   </tr>
                 )

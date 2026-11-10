@@ -112,7 +112,7 @@ export default function KasirPage() {
     } finally { setBusy(false) }
   }
 
-  const shown = (products.data ?? []).filter((p) => p.name.toLowerCase().includes(search.trim().toLowerCase()))
+  const shown = (products.data ?? []).filter((p) => (p.name ?? '').toLowerCase().includes(search.trim().toLowerCase()))
   const priceOf = (p: Product) => (category === 'grosir' ? p.price_5kg : p.price_retail)
 
   const cart = (

@@ -22,7 +22,7 @@ export default function KatalogTab() {
 
   const q = useQuery({ queryKey: ['products-admin'], queryFn: () => api<{ data: ProductAdmin[] }>('/products').then((r) => r.data) })
   const all = q.data ?? []
-  const rows = all.filter((p) => p.name.toLowerCase().includes(search.trim().toLowerCase()) && (filter === 'all' || (filter === 'active') === p.is_active))
+  const rows = all.filter((p) => (p.name ?? '').toLowerCase().includes(search.trim().toLowerCase()) && (filter === 'all' || (filter === 'active') === p.is_active))
   const minus = all.filter((p) => parseFloat(p.stock_kg) < 0)
 
   async function toggle(p: ProductAdmin) {
@@ -75,7 +75,7 @@ export default function KatalogTab() {
             <table className="w-full text-sm">
               <thead className="bg-surface text-left text-xs font-semibold">
                 <tr>
-                  <th className="px-4 py-3">Nama barang</th><th className="px-4 py-3 text-right">Harga ecer</th><th className="px-4 py-3 text-right">Harga 3 kg</th>
+                  <th className="px-4 py-3">Nama barang</th><th className="px-4 py-3">Jenis</th><th className="px-4 py-3 text-right">Harga ecer</th>
                   <th className="px-4 py-3 text-right">Harga 5 kg</th><th className="px-4 py-3 text-right">Stok</th><th className="px-4 py-3 text-center">Status</th><th className="px-4 py-3 text-center">Aksi</th>
                 </tr>
               </thead>
@@ -85,7 +85,7 @@ export default function KatalogTab() {
                   return (
                     <tr key={p.id} className={`hover:bg-surface/40 ${p.is_active ? '' : 'text-ink-muted'}`}>
                       <td className="px-4 py-3 font-medium">{p.name}</td>
-                      <td className="px-4 py-3 text-right">{rupiah(p.price_retail)}</td><td className="px-4 py-3 text-right">{rupiah(p.price_3kg)}</td><td className="px-4 py-3 text-right">{rupiah(p.price_5kg)}</td>
+                      <td className="px-4 py-3">{p.jenis ?? '-'}</td><td className="px-4 py-3 text-right">{rupiah(p.price_retail)}</td><td className="px-4 py-3 text-right">{rupiah(p.price_5kg)}</td>
                       <td className={`px-4 py-3 text-right whitespace-nowrap ${neg ? 'font-bold text-danger' : ''}`}>{formatKgStr(p.stock_kg)} kg</td>
                       <td className="px-4 py-3 text-center"><StatusPill active={p.is_active} /></td>
                       <td className="px-4 py-3"><Actions p={p} busy={busyId === p.id} onEdit={() => setEditing(p)} onHistory={() => setHist(p)} onToggle={() => toggle(p)} /></td>
@@ -100,7 +100,7 @@ export default function KatalogTab() {
             {rows.map((p) => (
               <li key={p.id} className={`rounded-xl border border-surface-border p-3 ${p.is_active ? '' : 'bg-surface/40'}`}>
                 <div className="flex items-start justify-between gap-2"><p className="font-bold">{p.name}</p><StatusPill active={p.is_active} /></div>
-                <p className="mt-1 text-xs text-ink-muted">Ecer {rupiah(p.price_retail)} &middot; 3 kg {rupiah(p.price_3kg)} &middot; 5 kg {rupiah(p.price_5kg)}</p>
+                <p className="mt-1 text-xs text-ink-muted">{p.jenis ?? '-'} &middot; Ecer {rupiah(p.price_retail)} &middot; 5 kg {rupiah(p.price_5kg)}</p>
                 <div className="mt-2 flex items-center justify-between border-t border-surface-border pt-2">
                   <p className={`text-sm ${parseFloat(p.stock_kg) < 0 ? 'font-bold text-danger' : ''}`}>Stok {formatKgStr(p.stock_kg)} kg</p>
                   <Actions p={p} busy={busyId === p.id} onEdit={() => setEditing(p)} onHistory={() => setHist(p)} onToggle={() => toggle(p)} />
