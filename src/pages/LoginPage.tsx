@@ -77,8 +77,7 @@ export default function LoginPage() {
 
       <footer className="text-center text-xs text-ink-muted">
         <p className="font-bold text-ink/70">FAUNA BAWANG</p>
-        <p>Toko Sumber Rezeki</p>
-        <p className="mt-1">© {new Date().getFullYear()} Fauna Bawang. Semua hak dilindungi.</p>
+        <p className="mt-1">© {new Date().getFullYear()} Fauna Bawang.</p>
       </footer>
     </div>
   )

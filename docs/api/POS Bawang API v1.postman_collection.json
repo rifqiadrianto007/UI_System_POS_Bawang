@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "pos-bawang-api-v1",
     "name": "POS Bawang API v1",
-    "description": "Koleksi API v1 POS Bawang. Pilih environment POS Bawang - Local sebelum menjalankan request; kontrak pembayaran final-total diperbarui 2026-10-25.",
+    "description": "Koleksi API v1 POS Bawang. Pilih environment POS Bawang - Local. Kontrak stok batch v2 mencakup filter kulak berdasarkan jenis, purchase_id wajib pada hitung ulang, dan data identitas setiap baris GET /stock.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -258,7 +258,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Merah A\",\n  \"price_retail\": 27500,\n  \"price_3kg\": 26000,\n  \"price_5kg\": 24000\n}",
+              "raw": "{\n  \"name\": \"Merah A\",\n  \"jenis\": \"merah\",\n  \"price_retail\": 27500,\n  \"price_5kg\": 24000\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -315,7 +315,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Merah A\",\n  \"price_retail\": 28000,\n  \"price_3kg\": 26500,\n  \"price_5kg\": 24500\n}",
+              "raw": "{\n  \"name\": \"Merah A\",\n  \"jenis\": \"merah\",\n  \"price_retail\": 28000,\n  \"price_5kg\": 24500\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1830,7 +1830,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"supplier_id\": 1,\n  \"purchased_at\": \"2026-10-19\",\n  \"gross_weight_kg\": \"100.000\",\n  \"price_per_kg\": 17000,\n  \"notes\": \"Batch contoh doc 01\"\n}",
+              "raw": "{\n  \"supplier_id\": 1,\n  \"purchased_at\": \"2026-10-19\",\n  \"jenis\": \"merah\",\n  \"gross_weight_kg\": \"100.000\",\n  \"price_per_kg\": 17000,\n  \"notes\": \"Batch contoh doc 01\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1846,7 +1846,73 @@
                 "purchases"
               ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Kulak tersimpan dan purchase_id tersedia', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const data = pm.response.json().data;",
+                  "    pm.expect(data.jenis).to.be.oneOf(['merah', 'putih']);",
+                  "    pm.environment.set('purchase_id', data.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create White Purchase",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\r\n  \"supplier_id\": 1,\r\n  \"purchased_at\": \"2026-10-19\",\r\n  \"jenis\": \"putih\",\r\n  \"gross_weight_kg\": \"100.000\",\r\n  \"price_per_kg\": 17000,\r\n  \"notes\": \"Batch contoh doc 01\"\r\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/purchases",
+              "host": [
+                "{{base_url}}{{api_prefix}}"
+              ],
+              "path": [
+                "purchases"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Kulak tersimpan dan purchase_id tersedia', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    const data = pm.response.json().data;",
+                  "    pm.expect(data.jenis).to.be.oneOf(['merah', 'putih']);",
+                  "    pm.environment.set('purchase_id', data.id);",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "List Purchases",
@@ -1868,6 +1934,55 @@
               ]
             }
           }
+        },
+        {
+          "name": "List White Purchases",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}{{api_prefix}}/purchases?jenis=putih&per_page=50",
+              "host": [
+                "{{base_url}}{{api_prefix}}"
+              ],
+              "path": [
+                "purchases"
+              ],
+              "query": [
+                {
+                  "key": "jenis",
+                  "value": "putih",
+                  "description": "Filter batch untuk baris produk bawang putih."
+                },
+                {
+                  "key": "per_page",
+                  "value": "50",
+                  "description": "Ambil maksimal 50 kulak per halaman."
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Daftar hanya memuat kulak putih', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    const body = pm.response.json();",
+                  "    pm.expect(body.data).to.be.an('array');",
+                  "    body.data.forEach(function (purchase) { pm.expect(purchase.jenis).to.eql('putih'); });",
+                  "});"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Purchase",
@@ -1892,7 +2007,7 @@
           }
         },
         {
-          "name": "Update Open Purchase",
+          "name": "Update Purchase",
           "request": {
             "method": "PUT",
             "header": [
@@ -1907,7 +2022,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"supplier_id\": 1,\n  \"purchased_at\": \"2026-10-22\",\n  \"gross_weight_kg\": \"100.000\",\n  \"price_per_kg\": 17000,\n  \"notes\": \"Batch diperbarui\"\n}",
+              "raw": "{\n  \"supplier_id\": 1,\n  \"purchased_at\": \"2026-10-22\",\n  \"jenis\": \"merah\",\n  \"gross_weight_kg\": \"100.000\",\n  \"price_per_kg\": 17000,\n  \"notes\": \"Batch diperbarui\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1927,7 +2042,7 @@
           }
         },
         {
-          "name": "Delete Open Purchase",
+          "name": "Delete Purchase",
           "request": {
             "method": "DELETE",
             "header": [
@@ -1944,126 +2059,6 @@
               "path": [
                 "purchases",
                 "{{purchase_id}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Add Purchase Lot",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"product_id\": {{product_id}},\n  \"clean_weight_kg\": \"40.000\",\n  \"cleaned_at\": \"2026-10-22\",\n  \"notes\": \"Hasil sortir grade A\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}{{api_prefix}}/purchases/{{purchase_id}}/lots",
-              "host": [
-                "{{base_url}}{{api_prefix}}"
-              ],
-              "path": [
-                "purchases",
-                "{{purchase_id}}",
-                "lots"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Update Open Purchase Lot",
-          "request": {
-            "method": "PUT",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"product_id\": \"{{product_id}}\",\n  \"clean_weight_kg\": \"40.000\",\n  \"cleaned_at\": \"2026-10-22\",\n  \"notes\": \"Berat sortir diperbarui\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "url": {
-              "raw": "{{base_url}}{{api_prefix}}/purchases/{{purchase_id}}/lots/{{lot_id}}",
-              "host": [
-                "{{base_url}}{{api_prefix}}"
-              ],
-              "path": [
-                "purchases",
-                "{{purchase_id}}",
-                "lots",
-                "{{lot_id}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Delete Purchase Lot",
-          "request": {
-            "method": "DELETE",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}{{api_prefix}}/purchases/{{purchase_id}}/lots/{{lot_id}}",
-              "host": [
-                "{{base_url}}{{api_prefix}}"
-              ],
-              "path": [
-                "purchases",
-                "{{purchase_id}}",
-                "lots",
-                "{{lot_id}}"
-              ]
-            }
-          }
-        },
-        {
-          "name": "Finalize Purchase",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}{{api_prefix}}/purchases/1/finalize",
-              "host": [
-                "{{base_url}}{{api_prefix}}"
-              ],
-              "path": [
-                "purchases",
-                "1",
-                "finalize"
               ]
             }
           }
@@ -2094,15 +2089,15 @@
               "script": {
                 "type": "text",
                 "exec": [
-                  "pm.test('Ringkasan stok berhasil diambil', function () {",
+                  "pm.test('Setiap baris stok mengidentifikasi produk dan jenis bawang', function () {",
                   "    pm.response.to.have.status(200);",
                   "    const body = pm.response.json();",
                   "    pm.expect(body.data).to.be.an('array');",
-                  "    if (body.data.length > 0) {",
-                  "        pm.expect(body.data[0]).to.have.property('stock_weight_kg');",
-                  "        pm.expect(body.data[0]).to.have.property('lots');",
-                  "        pm.expect(body.data[0].inventory_value).to.be.a('number');",
-                  "    }",
+                  "    body.data.forEach(function (row) {",
+                  "        pm.expect(row.product_id).to.be.a('number').and.greaterThan(0);",
+                  "        pm.expect(row.name).to.be.a('string').and.not.empty;",
+                  "        pm.expect(['merah', 'putih']).to.include(row.jenis);",
+                  "    });",
                   "});"
                 ]
               }
@@ -2125,7 +2120,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"product_id\": {{product_id}},\n  \"counted_weight_kg\": \"18.500\",\n  \"counted_at\": \"2026-10-22T10:00:00+07:00\",\n  \"notes\": \"Hitung display pagi\"\n}",
+              "raw": "{\n  \"purchase_id\": {{purchase_id}},\n  \"product_id\": {{product_id}},\n  \"counted_weight_kg\": \"18.500\",\n  \"counted_at\": \"2026-11-11T10:00:00+07:00\",\n  \"notes\": \"Hitung display pagi\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

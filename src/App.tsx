@@ -4,6 +4,7 @@ import AppShell from './components/AppShell'
 import { useAuth, type User } from './lib/auth'
 import { homeFor } from './lib/roles'
 import BarangPage from './pages/BarangPage'
+import ErrorBoundary from './components/ErrorBoundary'
 import KasirPage from './pages/KasirPage'
 import LaporanPage from './pages/LaporanPage'
 import LoginPage from './pages/LoginPage'
@@ -36,12 +37,12 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<RequireAuth />}>
-          <Route element={<AppShell />}>
+          <Route element={<ErrorBoundary level="tata letak"><AppShell /></ErrorBoundary>}>
             <Route path="/kasir" element={<KasirPage />} />
             <Route path="/riwayat" element={<RiwayatPage />} />
             <Route element={<RequireRole role="owner" />}>
               <Route path="/laporan" element={<LaporanPage />} />
-              <Route path="/barang" element={<BarangPage />} />
+              <Route path="/barang" element={<ErrorBoundary level="halaman"><BarangPage /></ErrorBoundary>} />
               <Route path="/pengeluaran" element={<PengeluaranPage />} />
             </Route>
           </Route>

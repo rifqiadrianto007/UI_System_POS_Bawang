@@ -4,20 +4,21 @@ import { Loader2 } from 'lucide-react'
 import Modal from './Modal'
 import MoneyField from './MoneyField'
 import { useToast } from './Toast'
-import { useSuppliers } from '../hooks/usePurchases'
+import { refreshStock, useSuppliers } from '../hooks/usePurchases'
 import { api } from '../lib/api'
 import { todayWib } from '../lib/dates'
 import { formErrors } from '../lib/errors'
 import { formatKgStr, rupiah } from '../lib/format'
-import { gramsToKgString, kgStringToGrams, parseKg } from '../lib/util'
+import { gramsToKgString, parseKg } from '../lib/util'
 import type { Purchase } from '../lib/types'
 
-// Catat kulak (berat kotor dan harga per kg). Stok baru muncul setelah disortir menjadi lot dan difinalisasi.
+// Catat kulak (jenis, berat kotor, dan harga per kg).
 export default function PurchaseFormModal({ purchase, onClose, onManageSuppliers }: { purchase?: Purchase; onClose: () => void; onManageSuppliers: () => void }) {
   const qc = useQueryClient()
   const toast = useToast()
   const sup = useSuppliers()
   const [supplier, setSupplier] = useState(purchase ? String(purchase.supplier_id) : '')
+  const [jenis, setJenis] = useState<'merah' | 'putih'>(purchase?.jenis ?? 'merah')
   const [date, setDate] = useState(purchase?.purchased_at ?? todayWib())
   const [gross, setGross] = useState(purchase ? formatKgStr(purchase.gross_weight_kg) : '')
   const [price, setPrice] = useState(purchase ? String(purchase.price_per_kg) : '')
@@ -27,15 +28,14 @@ export default function PurchaseFormModal({ purchase, onClose, onManageSuppliers
   const [busy, setBusy] = useState(false)
 
   const g = parseKg(gross)
-  const lotsG = purchase ? kgStringToGrams(purchase.lots_total_kg) : 0
   const preview = g && Number(price) ? Math.round((g * Number(price)) / 1000) : null
 
   async function save() {
     const e: Record<string, string> = {}
     if (!supplier) e.supplier_id = 'Pilih supplier.'
+    if (jenis !== 'merah' && jenis !== 'putih') e.jenis = 'Pilih jenis bawang.'
     if (!date) e.purchased_at = 'Tanggal wajib diisi.'
     if (!g) e.gross_weight_kg = 'Berat kotor harus lebih dari 0.'
-    else if (g < lotsG) e.gross_weight_kg = `Tidak boleh kurang dari berat bersih yang sudah disortir (${formatKgStr(gramsToKgString(lotsG))} kg).`
     if (!(Number(price) >= 1)) e.price_per_kg = 'Harga per kg wajib diisi.'
     setErrs(e); setGeneral('')
     if (Object.keys(e).length) return
@@ -43,10 +43,10 @@ export default function PurchaseFormModal({ purchase, onClose, onManageSuppliers
     try {
       await api(purchase ? `/purchases/${purchase.id}` : '/purchases', {
         method: purchase ? 'PUT' : 'POST',
-        body: JSON.stringify({ supplier_id: Number(supplier), purchased_at: date, gross_weight_kg: gramsToKgString(g!), price_per_kg: Number(price), ...(notes.trim() ? { notes: notes.trim() } : purchase ? { notes: null } : {}) }),
+        body: JSON.stringify({ jenis, supplier_id: Number(supplier), purchased_at: date, gross_weight_kg: gramsToKgString(g!), price_per_kg: Number(price), ...(notes.trim() ? { notes: notes.trim() } : purchase ? { notes: null } : {}) }),
       })
-      await qc.invalidateQueries({ queryKey: ['purchases'] }); await qc.invalidateQueries({ queryKey: ['stock-report'] })
-      toast.success(purchase ? 'Kulak diperbarui' : 'Kulak dicatat. Lanjutkan dengan menyortir menjadi lot.')
+      await Promise.all([refreshStock(qc), qc.invalidateQueries({ queryKey: ['stock-counts'] })])
+      toast.success(purchase ? 'Kulak diperbarui' : 'Kulak aktif dan stok gudang bertambah')
       onClose()
     } catch (err) { const r = formErrors(err); setErrs(r.fields); setGeneral(r.message) } finally { setBusy(false) }
   }
@@ -71,6 +71,13 @@ export default function PurchaseFormModal({ purchase, onClose, onManageSuppliers
           {errs.supplier_id && <p role="alert" className="mt-1 text-xs text-danger">{errs.supplier_id}</p>}
           <button type="button" onClick={onManageSuppliers} className="mt-1 text-xs font-semibold text-brand underline">{sup.data?.length === 0 ? 'Belum ada supplier, tambah dulu' : 'Kelola supplier'}</button>
         </div>
+        <label className="block text-sm">Jenis bawang <span className="text-danger">*</span>
+          <select value={jenis} onChange={(e) => setJenis(e.target.value as 'merah' | 'putih')} className={field(errs.jenis)}>
+            <option value="merah">Merah</option>
+            <option value="putih">Putih</option>
+          </select>
+          {errs.jenis && <span role="alert" className="mt-1 block text-xs text-danger">{errs.jenis}</span>}
+        </label>
         <label className="block text-sm">Tanggal kulak <span className="text-danger">*</span>
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field(errs.purchased_at)} />
           {errs.purchased_at && <span role="alert" className="mt-1 block text-xs text-danger">{errs.purchased_at}</span>}
