@@ -9,7 +9,7 @@ import { formatKgStr, rupiah } from '../lib/format'
 import type { ProductAdmin } from '../lib/types'
 
 type Filter = 'all' | 'active' | 'inactive'
-const FILTERS: { id: Filter; label: string }[] = [{ id: 'all', label: 'Semua' }, { id: 'active', label: 'Aktif' }, { id: 'inactive', label: 'Nonaktif' }]
+const FILTERS: { id: Filter; label: string }[] = [{ id: 'all', label: 'Semua' }]
 
 export default function KatalogTab() {
   const qc = useQueryClient()
