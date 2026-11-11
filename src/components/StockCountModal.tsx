@@ -8,11 +8,12 @@ import { formErrors } from '../lib/errors'
 import { formatKgStr, rupiah } from '../lib/format'
 import { gramsToKgString, kgStringToGrams, parseKgZero } from '../lib/util'
 import { todayWib } from '../lib/dates'
-import type { ProductKind, Purchase } from '../lib/types'
+import type { ProductKind } from '../lib/types'
+import { usePurchases } from '../hooks/usePurchases'
 
 const nowWib = () => new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(new Date())
 
-export default function StockCountModal({ product, purchases, onClose }: { product: { id: number; name: string; jenis: ProductKind; stockKg: string }; purchases: Purchase[]; onClose: () => void }) {
+export default function StockCountModal({ product, onClose }: { product: { id: number; name: string; jenis: ProductKind; stockKg: string }; onClose: () => void }) {
   const qc = useQueryClient()
   const toast = useToast()
   const [val, setVal] = useState('')
@@ -22,7 +23,8 @@ export default function StockCountModal({ product, purchases, onClose }: { produ
   const [errs, setErrs] = useState<Record<string, string>>({})
   const [general, setGeneral] = useState('')
   const [busy, setBusy] = useState(false)
-  const matchingPurchases = purchases.filter((p) => p.jenis === product.jenis)
+  const purchasesQuery = usePurchases(product.jenis)
+  const matchingPurchases = (purchasesQuery.data ?? []).filter((p) => String(p.jenis ?? '').trim().toLowerCase() === product.jenis.toLowerCase() && Number.parseFloat(String(p.remaining_weight_kg ?? '0')) > 0)
   const [purchaseId, setPurchaseId] = useState('')
 
   const counted = parseKgZero(val)
@@ -74,7 +76,7 @@ export default function StockCountModal({ product, purchases, onClose }: { produ
         </div>
       ) : (
         <div className="space-y-4">
-          <label className="block text-sm">Batch kulak *<select value={purchaseId} onChange={(e) => setPurchaseId(e.target.value)} className={`mt-1 w-full rounded-xl border px-4 py-2.5 outline-none focus:border-brand ${errs.purchase_id ? 'border-danger' : 'border-surface-border'}`}><option value="">Pilih batch kulak</option>{matchingPurchases.map((p) => <option key={p.id} value={p.id}>{p.code || `Kulak #${p.id}`} · {p.purchased_at.slice(0, 10)} · sisa {formatKgStr(p.remaining_weight_kg)} kg</option>)}</select>{errs.purchase_id && <span role="alert" className="mt-1 block text-xs text-danger">{errs.purchase_id}</span>}</label>
+          <label className="block text-sm">Batch kulak *<select value={purchaseId} onChange={(e) => setPurchaseId(e.target.value)} className={`mt-1 w-full rounded-xl border px-4 py-2.5 outline-none focus:border-brand ${errs.purchase_id ? 'border-danger' : 'border-surface-border'}`}><option value="">{purchasesQuery.isPending ? 'Memuat batch kulak...' : 'Pilih batch kulak'}</option>{matchingPurchases.map((p) => <option key={p.id} value={p.id}>{p.code || `Kulak #${p.id}`} · {p.purchased_at.slice(0, 10)} · sisa {formatKgStr(p.remaining_weight_kg)} kg</option>)}</select>{errs.purchase_id && <span role="alert" className="mt-1 block text-xs text-danger">{errs.purchase_id}</span>}{purchasesQuery.isError && <span role="alert" className="mt-1 block text-xs text-danger">Gagal memuat batch jenis {product.jenis}.</span>}{!purchasesQuery.isPending && !purchasesQuery.isError && matchingPurchases.length === 0 && <span className="mt-1 block text-xs text-ink-muted">Belum ada batch {product.jenis} dengan sisa berat.</span>}</label>
           <p className="rounded-xl bg-surface p-3 text-sm">Stok sistem saat ini: <b>{formatKgStr(product.stockKg)} kg</b></p>
           <label className="block text-sm">Berat hasil hitung di display (kg)
             <input value={val} onChange={(e) => setVal(e.target.value)} inputMode="decimal" placeholder="Contoh: 12,5"
