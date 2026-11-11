@@ -41,13 +41,13 @@ export default function StokTab() {
     const report = useQuery({ queryKey: ['stock-report', from, to], queryFn: () => api<{ data: StockReport }>(`/reports/stock?from=${from}&to=${to}`).then((r) => r.data) })
     const stock = useQuery({ queryKey: ['stock'], queryFn: () => api<StockResponse>('/stock') })
     const counts = useQuery({ queryKey: ['stock-counts'], queryFn: () => api<{ data: StockCount[] }>('/stock-counts').then((r) => r.data) })
-  const redPurchases = usePurchases('merah')
-  const whitePurchases = usePurchases('putih')
-  const purchases = [...(redPurchases.data ?? []), ...(whitePurchases.data ?? [])]
+    const redPurchases = usePurchases('merah')
+    const whitePurchases = usePurchases('putih')
+    const purchases = [...(redPurchases.data ?? []), ...(whitePurchases.data ?? [])]
     const r = report.data
     const stockRows = Array.isArray(stock.data?.data) ? stock.data.data : []
     const stockTotals = stock.data?.totals
-  const pendingGrams = purchases.reduce((sum, purchase) => sum + gramsOrZero(purchase.remaining_weight_kg), 0)
+    const pendingGrams = purchases.reduce((sum, purchase) => sum + gramsOrZero(purchase.remaining_weight_kg), 0)
     // Hanya hitung ulang aktif TERBARU per barang yang bisa dibatalkan (aturan backend; yang lain ditolak 409).
     const latestActive = new Set<number>()
     const seen = new Set<string>()
@@ -146,7 +146,7 @@ export default function StokTab() {
                     <p className="rounded-xl bg-surface py-6 text-center text-sm text-ink-muted">Belum ada hitung ulang.</p>
                 ) : (
                     <div className="overflow-x-auto rounded-xl border border-surface-border">
-                        <table className="w-full min-w-[760px] text-sm">
+                        <table className="w-full min-w-190 text-sm">
                             <thead className="bg-surface text-left text-xs font-semibold"><tr><th className="px-4 py-2">Waktu</th><th className="px-4 py-2">Barang</th><th className="px-4 py-2 text-right">Sistem</th><th className="px-4 py-2 text-right">Hasil hitung</th><th className="px-4 py-2 text-right">Selisih</th><th className="px-4 py-2 text-right">Nilai susut</th><th className="px-4 py-2">Status</th><th className="px-4 py-2" /></tr></thead>
                             <tbody className="divide-y divide-surface-border">{counts.data!.map((c) => {
                                 const off = c.status === 'cancelled'
@@ -168,7 +168,7 @@ export default function StokTab() {
 
             {cancelling && <ReasonModal title="Batalkan hitung ulang" confirmLabel="Batalkan" onConfirm={cancel} onClose={() => setCancelling(null)}
                 description={`Hitung ulang ${cancelling.product_name} (selisih ${kg(cancelling.diff_kg)}, ${rupiah(cancelling.loss_value)}) dibatalkan dan susutnya dikembalikan. Hanya hitung ulang terakhir untuk barang ini yang bisa dibatalkan.`} />}
-      {counting && <StockCountModal product={counting} onClose={() => setCounting(null)} />}
+            {counting && <StockCountModal product={counting} onClose={() => setCounting(null)} />}
         </div>
     )
 }
