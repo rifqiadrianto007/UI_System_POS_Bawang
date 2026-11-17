@@ -18,7 +18,7 @@ body { background: var(--color-page); color: var(--color-ink); font-family: var(
 
 /* Nota 58 mm: dirender di luar layar (agar tingginya bisa diukur), hanya tampil saat window.print().
    @page size diset dinamis oleh Receipt58 (nilai "58mm auto" tidak valid di CSS, Chrome jatuh ke A4). */
-.print-only { position: fixed; top: 0; left: -10000px; width: 58mm; padding: 2mm 3mm; background: #fff; color: #000; font: 11px/1.35 var(--font-sans); }
+.print-only { position: fixed; top: 0; left: -10000px; width: 58mm; box-sizing: border-box; padding: 2mm 3mm; background: #fff; color: #000; font: 10px/1.3 var(--font-sans); }
 @media print {
   body > *:not(.print-only) { display: none !important; }
   .print-only { position: static; }
