@@ -42,13 +42,15 @@ export interface Finance {
   net_profit: number; cash_flow: number; cleaning_loss_value: number; susut_kg: string
   by_payment_method: { cash: { count: number; total: number }; qris: { count: number; total: number } }
   shortfall_count?: number // penjualan yang terjadi saat stok sistem kurang (HPP belum lengkap)
+  shrink_value?: number; surplus_value?: number; reconciliation_difference?: number; reconciliation_mismatch?: boolean
+  ending_inventory_value?: number
   daily: FinanceDaily[]
 }
 
 // Barang & stok (owner). Berat selalu string 3 desimal.
 export interface ProductAdmin extends Product { stock_kg: string; stock_value: number; shortfall_kg: string }
 export interface StockRow { product_id: number; name: string; jenis: ProductKind; is_active: boolean; stock_kg: string; shortfall_kg: string; stock_value: number; avg_cost: number; last_count_date: string | null }
-export interface StockTotals { display_kg: string; warehouse_kg: string; stock_value: number; inventory_value: number }
+export interface StockTotals { display_kg: string; unsorted_kg?: string; warehouse_kg?: string; stock_value: number; inventory_value: number }
 export interface StockResponse { data: StockRow[]; totals: StockTotals }
 export interface StockReportProduct {
   product_id: number; name: string; is_active: boolean; stock_kg: string; stock_value: number
@@ -58,6 +60,7 @@ export interface StockReport {
   from: string; to: string; incoming_gross_kg: string; pending_gross_kg: string; clean_kg: string; cleaning_shrink_kg: string
   sold_kg: string; display_shrink_kg: string; display_shrink_value: number; stock_value: number
   products: StockReportProduct[]
+  shrink_kg?: string; shrink_value?: number
 }
 export interface StockCount {
   id: number; product_id: number; purchase_id: number; product_name: string; counted_weight_kg: string; system_weight_kg: string
@@ -74,6 +77,8 @@ export interface Purchase {
   gross_weight_kg: string; price_per_kg: number; total_cost: number; sorted_weight_kg: string; remaining_weight_kg: string
   sort_percentage: number; status_sortir: 'belum_disortir' | 'tersortir'; can_edit: boolean; can_delete: boolean
   notes: string | null; lots: PurchaseLot[]
+  status_batch?: 'belum_selesai' | 'selesai_disortir'; is_locked?: boolean; added_weight_kg?: string
+  cleaning_shrink_kg?: string; cleaning_loss_value?: number; needs_stock_reconciliation?: boolean
 }
 
 export interface PriceHistoryRow { id: number; product_id: number; price_retail: number; price_5kg: number; changed_by: number; changed_at: string }

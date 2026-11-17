@@ -40,7 +40,13 @@ export default function ProductFormModal({ product, onClose }: { product?: Produ
       toast.success(product ? 'Barang berhasil diperbarui' : 'Barang berhasil ditambahkan')
       onClose()
     } catch (err) {
-      const r = formErrors(err); setErrs(r.fields); setGeneral(r.message)
+      const r = formErrors(err)
+      setErrs(r.fields)
+      const knownFields = new Set(['name', 'jenis', 'price_retail', 'price_5kg'])
+      const unrenderedErrors = Object.entries(r.fields)
+        .filter(([field]) => !knownFields.has(field))
+        .map(([field, message]) => `${field}: ${message}`)
+      setGeneral([r.message, ...unrenderedErrors].filter(Boolean).join(' '))
     } finally { setBusy(false) }
   }
 
@@ -64,6 +70,7 @@ export default function ProductFormModal({ product, onClose }: { product?: Produ
           <select value={kind} onChange={(e) => setKind(e.target.value as 'merah' | 'putih')} className="mt-1 w-full rounded-xl border border-surface-border px-4 py-2.5 text-base">
             <option value="merah">Merah</option><option value="putih">Putih</option>
           </select>
+          {errs.jenis ? <span role="alert" className="mt-1 block text-xs text-danger">{errs.jenis}</span> : null}
         </label>
         <MoneyField label="Harga ecer per kg" value={retail} onChange={setRetail} error={errs.price_retail} />
         <MoneyField label="Harga per kg untuk 5 kg (Grosir)" value={p5} onChange={setP5} error={errs.price_5kg} />

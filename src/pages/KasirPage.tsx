@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { CheckCircle2, Download, Package, Plus, Printer, Search, ShoppingCart } from 'lucide-react'
@@ -28,6 +28,7 @@ export default function KasirPage() {
   const [payError, setPayError] = useState<string | null>(null)
   const [done, setDone] = useState<Done | null>(null)
   const [printData, setPrintData] = useState<Receipt | null>(null)
+  const [printWidth, setPrintWidth] = useState<58 | 80>(58)
   const [printErr, setPrintErr] = useState<string | null>(null)
   const attempt = useRef<{ sig: string; id: string } | null>(null)
 
@@ -52,6 +53,18 @@ export default function KasirPage() {
     },
   })
   const quote = quoteQ.data
+  const quoteFinalTotal = useCallback(async (finalTotal: number) => {
+    const r = await api<{ data: Quote }>('/transactions/quote', { method: 'POST', body: JSON.stringify({ customer_category: category, items, final_total: finalTotal }) })
+    return { total: r.data.total, discount: r.data.discount }
+  }, [category, liveKey])
+  const checkKey = useDebounced(JSON.stringify(items), 300)
+  const checkQ = useQuery({
+    queryKey: ['check-cart', checkKey], enabled: lines.length > 0,
+    queryFn: () => api<{ data: { items: { product_id: number; insufficient: boolean }[] } }>('/transactions/check-cart', {
+      method: 'POST', body: JSON.stringify({ items: JSON.parse(checkKey) }),
+    }).then((r) => r.data.items),
+  })
+  const insufficient = new Set((checkQ.data ?? []).filter((i) => i.insufficient).map((i) => i.product_id))
   const quoteError = quoteQ.isError ? (quoteQ.error instanceof Error ? quoteQ.error.message : 'Gagal menghitung harga.') : null
   const ready = lines.length > 0 && key === liveKey && (quote?.subtotal ?? 0) > 0 && !quoteQ.isFetching && !quoteQ.isError && !!quote &&
     lines.every((l) => quote.items.some((i) => i.product_id === l.product.id && kgStringToGrams(i.weight_kg) === l.grams))
@@ -76,7 +89,7 @@ export default function KasirPage() {
   async function pdfFor(id: number, paid: number) {
     try {
       const { downloadReceiptPdf } = await import('../lib/receiptPdf')
-      await downloadReceiptPdf(await fetchReceipt(id, paid)); setPrintErr(null)
+      await downloadReceiptPdf(await fetchReceipt(id, paid), printWidth); setPrintErr(null)
     } catch { setPrintErr('PDF gagal dibuat. Transaksi sudah tersimpan, coba lagi.') }
   }
 
@@ -99,11 +112,11 @@ export default function KasirPage() {
     const sig = JSON.stringify(body)
     if (attempt.current?.sig !== sig) attempt.current = { sig, id: uuid() }
     try {
-      const tx = await api<{ data: { id: number; invoice_no: string } }>('/transactions', {
+      const tx = await api<{ data: { id: number; invoice_no: string; change: number } }>('/transactions', {
         method: 'POST', body: JSON.stringify({ client_uuid: attempt.current.id, ...body }),
       })
       setPaying(false)
-      setDone({ id: tx.data.id, invoice: tx.data.invoice_no, total: finalTotal, paid, change: Math.max(0, paid - finalTotal) })
+      setDone({ id: tx.data.id, invoice: tx.data.invoice_no, total: finalTotal, paid, change: tx.data.change })
       resetCart()
       if (print) void printFor(tx.data.id, paid)
     } catch (e) {
@@ -116,7 +129,7 @@ export default function KasirPage() {
   const priceOf = (p: Product) => (category === 'grosir' ? p.price_5kg : p.price_retail)
 
   const cart = (
-    <CartPanel lines={lines} quote={quote} ready={ready} error={quoteError}
+    <CartPanel lines={lines} quote={quote} ready={ready} error={quoteError} insufficient={insufficient}
       category={category} setCategory={setCategory} name={name} setName={setName} method={method} setMethod={setMethod}
       setGrams={setGrams} remove={remove} clear={resetCart}
       onPay={() => { setSheet(false); setPayError(null); setPaying(true) }} />
@@ -170,7 +183,7 @@ export default function KasirPage() {
       )}
       {!isDesktop && sheet && <Modal title="Keranjang" onClose={() => setSheet(false)}><div className="-mx-5 -my-4">{cart}</div></Modal>}
       {picking && <WeightPicker product={picking} onAdd={(g) => add(picking, g)} onClose={() => setPicking(null)} />}
-      {paying && quote && <PaymentModal subtotal={quote.subtotal} method={method} busy={busy} error={payError} onSubmit={submit} onClose={() => setPaying(false)} />}
+      {paying && quote && <PaymentModal subtotal={quote.subtotal} method={method} busy={busy} error={payError} quoteFinalTotal={quoteFinalTotal} onSubmit={submit} onClose={() => setPaying(false)} />}
 
       {done && (
         <Modal title="Transaksi berhasil" onClose={() => { setDone(null); setPrintErr(null) }}
@@ -180,6 +193,9 @@ export default function KasirPage() {
                 <button onClick={() => void printFor(done.id, done.paid)} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-brand py-3 font-semibold text-brand"><Printer size={16} /> Cetak nota</button>
                 <button onClick={() => void pdfFor(done.id, done.paid)} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-brand py-3 font-semibold text-brand"><Download size={16} /> Unduh PDF</button>
               </div>
+              <label className="block text-xs text-ink-muted">Lebar kertas struk
+                <select value={printWidth} onChange={e => setPrintWidth(Number(e.target.value) as 58 | 80)} className="ml-2 rounded-lg border border-surface-border px-2 py-1 text-ink"><option value={58}>58 mm</option><option value={80}>80 mm</option></select>
+              </label>
               <button onClick={() => { setDone(null); setPrintErr(null) }} className="w-full rounded-xl bg-brand py-3 font-semibold text-white">Transaksi baru</button>
             </div>
           }>
@@ -192,7 +208,7 @@ export default function KasirPage() {
           </div>
         </Modal>
       )}
-      {printData && createPortal(<Receipt58 r={printData} />, document.body)}
+      {printData && createPortal(<Receipt58 r={printData} width={printWidth} />, document.body)}
     </>
   )
 }

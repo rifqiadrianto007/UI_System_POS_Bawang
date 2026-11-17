@@ -4,10 +4,11 @@ import { formatReceiptDate, rupiah } from './format'
 import type { Receipt } from './types'
 
 // PDF struk lebar 58 mm, tinggi mengikuti isi (seperti PDF dari server pada umumnya).
-const W = 58, MX = 3, R = W - MX
+const MX = 3
 const lh = (pt: number) => pt * 0.3528 * 1.3 // tinggi baris (mm) dari ukuran font (pt)
 
-function draw(doc: jsPDF, r: Receipt): number {
+function draw(doc: jsPDF, r: Receipt, W: 58 | 80): number {
+  const R = W - MX
   const { date, time } = formatReceiptDate(r.occurred_at)
   let y = 2
   const text = (t: string, size: number, style: 'normal' | 'bold' | 'italic' | 'bolditalic' = 'normal') => {
@@ -21,28 +22,20 @@ function draw(doc: jsPDF, r: Receipt): number {
     y += 1.2; doc.setLineWidth(0.15); doc.setLineDashPattern([0.6, 0.6], 0); doc.line(MX, y, R, y); doc.setLineDashPattern([], 0); y += 0.6
   }
 
-  text(STORE.name, 14, 'bold')
+  text(STORE.name, 11, 'bold')
   y += 0.4
-  text(STORE.address, 7, 'italic')
-  text(STORE.hours, 7, 'italic')
-  y += 3
-  row('Date:', `${time}  ${date}`)
-  if (STORE.showInvoiceNo) { doc.setFont('helvetica', 'normal'); doc.setFontSize(6.5); y += lh(6.5); doc.text(r.invoice_no, MX, y) }
+  text(STORE.address, 6, 'italic')
+  text(STORE.hours, 6, 'italic')
+  y += 2
+  row('Date:', `${time}  ${date}`, 7)
+  if (STORE.showInvoiceNo) { doc.setFont('helvetica', 'normal'); doc.setFontSize(6); y += lh(6); doc.text(r.invoice_no, MX, y) }
   dash()
 
-  doc.setFont('helvetica', 'normal'); doc.setFontSize(8)
-  const weights = r.items.map((i) => `${parseFloat(i.weight_kg)}kg`)
-  const prices = r.items.map((i) => rupiah(i.line_total))
-  const wW = Math.max(...weights.map((s) => doc.getTextWidth(s)))
-  const pW = Math.max(...prices.map((s) => doc.getTextWidth(s)))
-  const nameW = R - MX - wW - pW - 4
-  r.items.forEach((i, k) => {
-    const lines: string[] = doc.splitTextToSize(i.product_name, nameW)
-    lines.forEach((ln, n) => {
-      y += lh(8)
-      doc.text(ln, MX, y)
-      if (n === 0) { doc.text(weights[k], R - pW - 2, y, { align: 'right' }); doc.text(prices[k], R, y, { align: 'right' }) }
-    })
+  r.items.forEach((i) => {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8)
+    const lines: string[] = doc.splitTextToSize(i.product_name, R - MX)
+    lines.forEach((ln) => { y += lh(8); doc.text(ln, MX, y) })
+    row(`${parseFloat(i.weight_kg)}kg x ${rupiah(i.price_per_kg)}/kg`, rupiah(i.line_total), 7)
     y += 0.5
   })
   dash()
@@ -56,18 +49,18 @@ function draw(doc: jsPDF, r: Receipt): number {
   y += 4
   text('TERIMA KASIH', 9, 'bolditalic')
   y += 2.5
-  text(`hubungi : ${STORE.phone}`, 7)
+  text(`hubungi : ${STORE.phone}`, 6)
   return y + 7
 }
 
-export async function buildReceiptPdf(r: Receipt) {
+export async function buildReceiptPdf(r: Receipt, W: 58 | 80 = 58) {
   const { jsPDF } = await import('jspdf')
-  const height = draw(new jsPDF({ unit: 'mm', format: [W, 800] }), r) // dry-run untuk mengukur tinggi
-  const doc = new jsPDF({ unit: 'mm', format: [W, Math.max(Math.ceil(height), 59)] })
-  draw(doc, r)
+  const height = draw(new jsPDF({ unit: 'mm', format: [W, 800] }), r, W)
+  const doc = new jsPDF({ unit: 'mm', format: [W, Math.max(Math.ceil(height), W === 58 ? 59 : 70)] })
+  draw(doc, r, W)
   return doc
 }
 
-export async function downloadReceiptPdf(r: Receipt) {
-  ;(await buildReceiptPdf(r)).save(`${r.invoice_no}.pdf`)
+export async function downloadReceiptPdf(r: Receipt, W: 58 | 80 = 58) {
+  ;(await buildReceiptPdf(r, W)).save(`${r.invoice_no}.pdf`)
 }

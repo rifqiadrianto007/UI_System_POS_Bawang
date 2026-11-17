@@ -1,9 +1,10 @@
 import { Fragment, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronDown, ChevronRight, ClipboardCheck, Package, ShoppingCart, Truck } from 'lucide-react'
+import { ChevronDown, ChevronRight, ClipboardCheck, Package, ShoppingCart, Plus, Truck } from 'lucide-react'
 import ReasonModal from './ReasonModal'
 import StatCard from './StatCard'
 import StockCountModal from './StockCountModal'
+import StockAdditionModal from './StockAdditionModal'
 import { useToast } from './Toast'
 import { dateTime } from './TransactionDetailModal'
 import { refreshStock, usePurchases } from '../hooks/usePurchases'
@@ -11,12 +12,18 @@ import { api } from '../lib/api'
 import { addDays, fmtLong, monthEnd, monthStart, todayWib } from '../lib/dates'
 import { formatKgStr, rupiah } from '../lib/format'
 import type { StockCount, StockReport, StockResponse } from '../lib/types'
+import { isPurchaseFinished, sortedPurchaseKg } from '../lib/purchaseProgress'
 
 const gramsOrZero = (value: unknown) => {
     const n = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''))
     return Number.isFinite(n) ? Math.max(0, Math.round(n * 1000)) : 0
 }
 const kg = (s: unknown) => `${formatKgStr(String(gramsOrZero(s) / 1000))} kg`
+const signedKg = (value: unknown) => {
+    const n = numericKg(value)
+    const grams = Math.round(Math.abs(n) * 1000)
+    return `${n < 0 ? '-' : ''}${formatKgStr(String(grams / 1000))} kg`
+}
 const numericKg = (value: unknown) => {
     const n = typeof value === 'number' ? value : Number.parseFloat(String(value ?? ''))
     return Number.isFinite(n) ? n : 0
@@ -34,6 +41,8 @@ export default function StokTab() {
     const [period, setPeriod] = useState<'month' | 'lastmonth'>('month')
     const [open, setOpen] = useState<number | null>(null)
     const [counting, setCounting] = useState<{ id: number; name: string; jenis: 'merah' | 'putih'; stockKg: string } | null>(null)
+    const [adding, setAdding] = useState(false)
+    const productBatches = useQuery({ queryKey: ['product-batches', open], enabled: open !== null, queryFn: () => api<unknown>(`/products/${open}/batches`) })
 
     const last = addDays(monthStart(today), -1)
     const { from, to } = period === 'month' ? { from: monthStart(today), to: today } : { from: monthStart(last), to: monthEnd(last) }
@@ -48,6 +57,43 @@ export default function StokTab() {
     const stockRows = Array.isArray(stock.data?.data) ? stock.data.data : []
     const stockTotals = stock.data?.totals
     const pendingGrams = purchases.reduce((sum, purchase) => sum + gramsOrZero(purchase.remaining_weight_kg), 0)
+    // The stock report may lag or omit count losses. Reconcile it with active
+    // recount rows so shrink is visible immediately after a successful count.
+    const countShrinkByProduct = new Map<number, { kg: number; value: number }>()
+    ;(counts.data ?? []).filter((c) => c.status !== 'cancelled').forEach((c) => {
+        const lostKg = Math.max(0, numericKg(c.system_weight_kg) - numericKg(c.counted_weight_kg))
+        if (lostKg <= 0) return
+        const current = countShrinkByProduct.get(c.product_id) ?? { kg: 0, value: 0 }
+        countShrinkByProduct.set(c.product_id, { kg: current.kg + lostKg, value: current.value + Math.max(0, Number(c.loss_value) || 0) })
+    })
+    const reportProducts = Array.isArray(r?.products) ? r.products : []
+    const productShrink = reportProducts.map((p) => {
+        const fromCounts = countShrinkByProduct.get(p.product_id) ?? { kg: 0, value: 0 }
+        return {
+            productId: p.product_id,
+            kg: Math.max(numericKg(p.display_shrink_kg), fromCounts.kg),
+            value: Math.max(Number(p.display_shrink_value) || 0, fromCounts.value),
+        }
+    })
+    const displayedTotalShrinkKg = Math.max(numericKg(r?.display_shrink_kg ?? r?.shrink_kg), productShrink.reduce((sum, p) => sum + p.kg, 0))
+    const displayedTotalShrinkValue = Math.max(Number(r?.display_shrink_value ?? r?.shrink_value) || 0, productShrink.reduce((sum, p) => sum + p.value, 0))
+    const completedPurchaseShrink = purchases
+        .filter((purchase) => {
+            const date = String(purchase.purchased_at ?? '').slice(0, 10)
+            return isPurchaseFinished(purchase) && date >= from && date <= to
+        })
+        .reduce((sum, purchase) => {
+            const gross = numericKg(purchase.gross_weight_kg)
+            const explicitShrink = Number.parseFloat(String(purchase.cleaning_shrink_kg ?? ''))
+            const shrinkKg = Number.isFinite(explicitShrink)
+                ? Math.max(0, explicitShrink)
+                : Math.max(0, numericKg(purchase.remaining_weight_kg), sortedPurchaseKg(purchase) > 0 ? gross - sortedPurchaseKg(purchase) : 0)
+            const explicitValue = Number(purchase.cleaning_loss_value)
+            const shrinkValue = Number.isFinite(explicitValue) && explicitValue > 0
+                ? explicitValue
+                : shrinkKg * Math.max(0, Number(purchase.price_per_kg) || 0)
+            return { kg: sum.kg + shrinkKg, value: sum.value + shrinkValue }
+        }, { kg: 0, value: 0 })
     // Hanya hitung ulang aktif TERBARU per barang yang bisa dibatalkan (aturan backend; yang lain ditolak 409).
     const latestActive = new Set<number>()
     const seen = new Set<string>()
@@ -81,11 +127,11 @@ export default function StokTab() {
                 </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+            <div className="flex justify-end"><button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-xl bg-brand px-4 py-2.5 text-sm font-semibold text-white"><Plus size={17}/>Tambah</button></div>
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
                 <StatCard icon={Package} label="Stok display" value={kg(stockTotals?.display_kg)} />
-                <StatCard icon={Truck} label="Stok gudang" value={kg(stockTotals?.warehouse_kg)} />
-                <StatCard icon={Truck} label="Belum disortir" value={kg(pendingGrams / 1000)} note="Total sisa batch kulak" />
-                <StatCard icon={Package} label="Nilai persediaan" value={rupiah(stockTotals?.inventory_value ?? 0)} />
+                <StatCard icon={Truck} label="Belum disortir" value={kg(stockTotals?.unsorted_kg ?? pendingGrams / 1000)} />
+                <StatCard icon={Package} label="Total susut" value={kg(displayedTotalShrinkKg + completedPurchaseShrink.kg)} note={rupiah(displayedTotalShrinkValue + completedPurchaseShrink.value)} />
                 <StatCard icon={ShoppingCart} label="Terjual" value={kg(r?.sold_kg)} />
             </div>
 
@@ -117,7 +163,10 @@ export default function StokTab() {
                                             <td className={`px-4 py-3 text-right whitespace-nowrap ${neg ? 'font-bold text-danger' : ''}`}>{neg ? `${formatKgStr(String(numericKg(stockValue)))} kg` : kg(stockValue)}</td>
                                             <td className="px-4 py-3 text-right whitespace-nowrap">{rupiah(p.stock_value)}</td>
                                             <td className="px-4 py-3 text-right whitespace-nowrap">{kg(p.sold_kg)}</td>
-                                            <td className="px-4 py-3 text-right whitespace-nowrap">{kg(p.display_shrink_kg)}{p.display_shrink_value ? <span className="block text-[11px] text-ink-muted">{rupiah(p.display_shrink_value)}</span> : null}</td>
+                                            {(() => {
+                                                const shrink = productShrink.find((item) => item.productId === p.product_id)
+                                                return <td className="px-4 py-3 text-right whitespace-nowrap">{kg(shrink?.kg ?? p.display_shrink_kg)}{(shrink?.value ?? p.display_shrink_value) > 0 ? <span className="block text-[11px] text-ink-muted">{rupiah(shrink?.value ?? p.display_shrink_value)}</span> : null}</td>
+                                            })()}
                                             <td className="px-4 py-3 whitespace-nowrap text-xs">{p.last_count_date ? fmtLong(p.last_count_date.slice(0, 10)) : 'Belum pernah'}</td>
                                             <td className="px-4 py-3 text-center">
                                                 <button onClick={() => {
@@ -129,7 +178,10 @@ export default function StokTab() {
                                         </tr>
                                         {isOpen && (
                                             <tr className="bg-surface/40"><td colSpan={7} className="px-4 py-3">
-                                                <p className="text-xs text-ink-muted">Stok display berasal dari hitung ulang per batch kulak. Pilih tombol “Hitung ulang” untuk memilih batch secara eksplisit.</p>
+                                                {productBatches.isPending ? <p className="text-xs text-ink-muted">Memuat batch...</p> : (() => {
+                                                    const payload = productBatches.data as {data?: unknown}; const rows = Array.isArray(payload?.data) ? payload.data as {name?:string; batch_name?:string; sorted_weight_kg?:string; added_weight_kg?:string}[] : []
+                                                    return rows.length ? <table className="w-full max-w-xl text-sm"><thead><tr className="text-left text-xs text-ink-muted"><th className="py-2">Nama batch</th><th className="py-2 text-right">Berat tersortir</th></tr></thead><tbody>{rows.map((b,i)=><tr key={i}><td className="py-2">{b.name ?? b.batch_name ?? '-'}</td><td className="py-2 text-right">{kg(b.sorted_weight_kg ?? b.added_weight_kg)}</td></tr>)}</tbody></table> : <p className="text-sm text-ink-muted">Belum ada batch</p>
+                                                })()}
                                             </td></tr>
                                         )}
                                     </Fragment>
@@ -154,7 +206,12 @@ export default function StokTab() {
                                     <tr key={c.id} className={off ? 'text-ink-muted' : ''}>
                                         <td className="px-4 py-2 whitespace-nowrap">{dateTime(c.counted_at)}</td><td className="px-4 py-2">{c.product_name}</td>
                                         <td className="px-4 py-2 text-right">{kg(c.system_weight_kg)}</td><td className="px-4 py-2 text-right">{kg(c.counted_weight_kg)}</td>
-                                        <td className={`px-4 py-2 text-right ${off ? 'line-through' : parseFloat(c.diff_kg) < 0 ? 'font-semibold text-danger' : ''}`}>{kg(c.diff_kg)}</td>
+                                        {(() => {
+                                            // Some API responses return diff_kg as an absolute/zero value for
+                                            // losses. Derive the signed difference from the recorded weights.
+                                            const difference = numericKg(c.counted_weight_kg) - numericKg(c.system_weight_kg)
+                                            return <td className={`px-4 py-2 text-right ${off ? 'line-through' : difference < 0 ? 'font-semibold text-danger' : ''}`}>{signedKg(difference)}</td>
+                                        })()}
                                         <td className={`px-4 py-2 text-right ${off ? 'line-through' : ''}`}>{rupiah(c.loss_value)}</td>
                                         <td className="px-4 py-2 whitespace-nowrap text-xs">{off ? <span title={c.cancel_reason ?? ''}>Dibatalkan{c.cancel_reason ? ` (${c.cancel_reason})` : ''}</span> : 'Aktif'}</td>
                                         <td className="px-4 py-2 text-right">{latestActive.has(c.id) && <button onClick={() => setCancelling(c)} className="rounded-lg border border-danger px-3 py-1 text-xs font-semibold text-danger hover:bg-surface">Batalkan</button>}</td>
@@ -169,6 +226,7 @@ export default function StokTab() {
             {cancelling && <ReasonModal title="Batalkan hitung ulang" confirmLabel="Batalkan" onConfirm={cancel} onClose={() => setCancelling(null)}
                 description={`Hitung ulang ${cancelling.product_name} (selisih ${kg(cancelling.diff_kg)}, ${rupiah(cancelling.loss_value)}) dibatalkan dan susutnya dikembalikan. Hanya hitung ulang terakhir untuk barang ini yang bisa dibatalkan.`} />}
             {counting && <StockCountModal product={counting} onClose={() => setCounting(null)} />}
+            {adding && <StockAdditionModal onClose={() => setAdding(false)} />}
         </div>
     )
 }

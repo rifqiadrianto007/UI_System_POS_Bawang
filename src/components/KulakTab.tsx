@@ -1,11 +1,16 @@
 import { useState } from 'react'
-import { ChevronRight, Plus, Users } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
+import { Check, ChevronRight, Plus, Users } from 'lucide-react'
 import PurchaseDetailModal from './PurchaseDetailModal'
 import PurchaseFormModal from './PurchaseFormModal'
 import SupplierModal from './SupplierModal'
 import { usePurchases } from '../hooks/usePurchases'
-import { fmtLong } from '../lib/dates'
-import { formatKgStr } from '../lib/format'
+import { formatKgStr, rupiah } from '../lib/format'
+import { api } from '../lib/api'
+import Modal from './Modal'
+import { useToast } from './Toast'
+import { refreshStock } from '../hooks/usePurchases'
+import { isPurchaseFinished, remainingPurchaseKg, sortedPurchaseKg } from '../lib/purchaseProgress'
 import type { Purchase } from '../lib/types'
 
 export default function KulakTab() {
@@ -13,6 +18,10 @@ export default function KulakTab() {
   const [form, setForm] = useState<Purchase | 'new' | null>(null)
   const [detail, setDetail] = useState<number | null>(null)
   const [suppliers, setSuppliers] = useState(false)
+  const [finishing, setFinishing] = useState<Purchase | null>(null)
+  const [finishBusy, setFinishBusy] = useState(false)
+  const qc=useQueryClient(), toast=useToast()
+  async function finish(){ if(!finishing)return;setFinishBusy(true);try{await api(`/purchases/${finishing.id}/finish-sorting`,{method:'POST'});await refreshStock(qc);toast.success('Batch selesai disortir.');setFinishing(null)}catch(e){toast.error(e instanceof Error?e.message:'Gagal menyelesaikan batch.')}finally{setFinishBusy(false)} }
   const rows = q.data ?? []
   const safeKg = (value: unknown) => formatKgStr(String(Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0))
 
@@ -37,7 +46,7 @@ export default function KulakTab() {
             <table className="w-full min-w-245 text-sm">
             <thead className="bg-surface text-left text-xs font-semibold">
               <tr>
-                <th className="px-4 py-3">Kode</th><th className="px-4 py-3">Tanggal</th><th className="px-4 py-3">Supplier</th><th className="px-4 py-3">Jenis</th>
+                <th className="px-4 py-3">Kode</th><th className="px-4 py-3 text-right">Harga kulak/kg</th><th className="px-4 py-3">Supplier</th><th className="px-4 py-3">Jenis</th>
                 <th className="px-4 py-3 text-right">Berat kotor</th><th className="px-4 py-3 text-right">Tersortir</th><th className="px-4 py-3 text-right">Belum disortir</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" />
               </tr>
             </thead>
@@ -45,14 +54,14 @@ export default function KulakTab() {
               {rows.map((p) => (
                 <tr key={p.id} onClick={() => setDetail(p.id)} className="cursor-pointer hover:bg-surface/40">
                   <td className="px-4 py-3 whitespace-nowrap font-semibold">{p.code || '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap">{fmtLong(p.purchased_at)}</td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">{rupiah(p.price_per_kg)}</td>
                   <td className="px-4 py-3">{p.supplier?.name ?? '-'}</td>
                   <td className="px-4 py-3 capitalize">{p.jenis || '-'}</td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">{safeKg(p.gross_weight_kg)} kg</td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">{safeKg(p.sorted_weight_kg)} kg</td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">{safeKg(p.remaining_weight_kg)} kg</td>
-                  <td className="px-4 py-3 whitespace-nowrap"><span className="rounded-full border border-brand px-2 py-1 text-xs font-semibold text-brand">{p.status_sortir === 'tersortir' ? 'Tersortir' : 'Belum disortir'}</span></td>
-                  <td className="px-4 py-3 text-brand"><ChevronRight size={18} /></td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">{safeKg(sortedPurchaseKg(p))} kg</td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">{safeKg(remainingPurchaseKg(p))} kg</td>
+                  <td className="px-4 py-3 whitespace-nowrap">{isPurchaseFinished(p) ? <span className="rounded-full bg-surface px-2 py-1 text-xs font-semibold text-brand">Selesai disortir</span> : <span className="rounded-full border border-brand px-2 py-1 text-xs font-semibold text-brand">Belum disortir</span>}</td>
+                  <td className="px-4 py-3 text-brand">{!isPurchaseFinished(p) && <button title="Selesai disortir" aria-label="Selesai disortir" onClick={e=>{e.stopPropagation();setFinishing(p)}} className="rounded-lg p-2 hover:bg-surface"><Check size={18}/></button>}<ChevronRight className="inline" size={18} /></td>
                 </tr>
               ))}
             </tbody>
@@ -66,6 +75,7 @@ export default function KulakTab() {
         return purchase ? <PurchaseDetailModal purchase={purchase} onClose={() => setDetail(null)} onEdit={(p) => setForm(p)} /> : null
       })()}
       {suppliers && <SupplierModal onClose={() => setSuppliers(false)} />}
+      {finishing && <Modal title="Selesaikan sortir batch?" onClose={()=>!finishBusy&&setFinishing(null)} footer={<div className="grid grid-cols-2 gap-2"><button onClick={()=>setFinishing(null)} className="rounded-xl border border-brand py-3 font-semibold text-brand">Batal</button><button disabled={finishBusy} onClick={()=>void finish()} className="rounded-xl bg-brand py-3 font-semibold text-white">Ya, selesaikan</button></div>}><div className="space-y-3 text-sm"><p>Sisa yang akan dicatat sebagai susut:</p><p className="rounded-xl bg-surface p-3 font-bold">{safeKg(finishing.remaining_weight_kg)} kg</p><p className="text-xs text-ink-muted">Nilai rupiah susut belum tersedia di respons API batch.</p><p className="text-danger">Aksi ini tidak bisa dibatalkan.</p></div></Modal>}
     </div>
   )
 }

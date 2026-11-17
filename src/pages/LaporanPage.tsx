@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { AlertTriangle, Banknote, CalendarDays, Scale, ShoppingCart, Wallet } from 'lucide-react'
+import { AlertTriangle, Banknote, CalendarDays, Scale, ShoppingCart, Wallet, Package } from 'lucide-react'
 import { api } from '../lib/api'
 import { addDays, diffDays, eachDay, fmtLong, fmtShort, monthEnd, monthStart, todayWib } from '../lib/dates'
 import { compactRp, rupiah, rupiahSigned } from '../lib/format'
 import StatCard from '../components/StatCard'
-import type { Finance, FinanceDaily } from '../lib/types'
+import { usePurchases } from '../hooks/usePurchases'
+import { isPurchaseFinished, sortedPurchaseKg } from '../lib/purchaseProgress'
+import type { Finance, FinanceDaily, StockCount, StockReport } from '../lib/types'
 
 type Preset = 'today' | '7d' | 'month' | 'lastmonth' | 'custom'
 const PRESETS: { id: Preset; label: string }[] = [
@@ -18,6 +20,10 @@ type Tab = (typeof TABS)[number]['id']
 // Warna grafik: maroon + turunan dari beige/hitam (di luar 4 warna client, disetujui).
 const C = { income: '#5C0707', ops: '#C69C6D', kulak: '#8C5A3C', profit: '#000000', grid: '#E6D6C2' }
 const MAX_DAYS = 366
+const kgNumber = (value: unknown) => {
+    const n = Number.parseFloat(String(value ?? ''))
+    return Number.isFinite(n) ? Math.max(0, n) : 0
+}
 
 const ZERO: Omit<FinanceDaily, 'date'> = { net_sales: 0, operating_expenses: 0, purchases_total: 0, cogs: 0, display_shrink_value: 0, net_profit: 0 }
 const NUM = ['net_sales', 'operating_expenses', 'purchases_total', 'cogs', 'display_shrink_value', 'net_profit'] as const
@@ -61,8 +67,50 @@ export default function LaporanPage() {
             return 'data' in b ? b.data : b
         },
     })
+    const stockReport = useQuery({
+        queryKey: ['stock-report', from, to],
+        enabled: !rangeError,
+        queryFn: () => api<{ data: StockReport }>(`/reports/stock?from=${from}&to=${to}`).then((r) => r.data),
+    })
+    const stockCounts = useQuery({
+        queryKey: ['stock-counts'],
+        queryFn: () => api<{ data: StockCount[] }>('/stock-counts').then((r) => r.data),
+    })
+    const purchases = usePurchases()
     const f = q.data
     const dim = q.isPlaceholderData
+    // Match StokTab: reconcile display shrink from report rows and active
+    // recounts, then add completed batch sorting loss for the same date range.
+    const countShrinkByProduct = new Map<number, number>()
+    ;(stockCounts.data ?? []).filter((count) => count.status !== 'cancelled').forEach((count) => {
+        const loss = Math.max(0, kgNumber(count.system_weight_kg) - kgNumber(count.counted_weight_kg))
+        if (loss > 0) countShrinkByProduct.set(count.product_id, (countShrinkByProduct.get(count.product_id) ?? 0) + Math.max(0, Number(count.loss_value) || 0))
+    })
+    const stockRows = Array.isArray(stockReport.data?.products) ? stockReport.data.products : []
+    const displayFromRows = stockRows.reduce((sum, product) => Math.max(Number(product.display_shrink_value) || 0, countShrinkByProduct.get(product.product_id) ?? 0) + sum, 0)
+    const displayShrinkValue = Math.max(Number(stockReport.data?.display_shrink_value ?? stockReport.data?.shrink_value) || 0, displayFromRows)
+    const batchShrinkValue = (purchases.data ?? []).filter((purchase) => {
+        const date = String(purchase.purchased_at ?? '').slice(0, 10)
+        return isPurchaseFinished(purchase) && date >= from && date <= to
+    }).reduce((sum, purchase) => {
+        const gross = kgNumber(purchase.gross_weight_kg)
+        const explicitShrink = Number.parseFloat(String(purchase.cleaning_shrink_kg ?? ''))
+        const shrinkKg = Number.isFinite(explicitShrink)
+            ? Math.max(0, explicitShrink)
+            : Math.max(0, kgNumber(purchase.remaining_weight_kg), sortedPurchaseKg(purchase) > 0 ? gross - sortedPurchaseKg(purchase) : 0)
+        const explicitValue = Number(purchase.cleaning_loss_value)
+        return sum + (Number.isFinite(explicitValue) && explicitValue > 0
+            ? explicitValue
+            : shrinkKg * Math.max(0, Number(purchase.price_per_kg) || 0))
+    }, 0)
+    const shrinkSourcesReady = !stockReport.isPending && !stockCounts.isPending && !purchases.isPending
+    const totalShrinkValue = f
+        ? shrinkSourcesReady
+            ? displayShrinkValue + batchShrinkValue
+            : (Number(f.shrink_value ?? f.cleaning_loss_value) || 0) + (Number(f.display_shrink_value) || 0)
+        : 0
+    const displayShrinkForProfit = shrinkSourcesReady ? displayShrinkValue : Number(f?.display_shrink_value) || 0
+    const netProfit = f ? f.net_profit - displayShrinkForProfit : 0
 
     // Isi hari tanpa transaksi dengan nol agar grafik tidak melompat.
     const series = useMemo(() => {
@@ -70,7 +118,7 @@ export default function LaporanPage() {
         const byDate = new Map((Array.isArray(f.daily) ? f.daily : []).map((d) => [d.date, d]))
         return eachDay(from, to).map((date) => {
             const d = { ...ZERO, ...(byDate.get(date) ?? {}) }
-            return { ...d, date, label: fmtShort(date), spending: d.operating_expenses + d.purchases_total }
+            return { ...d, net_profit: d.net_profit - d.display_shrink_value, date, label: fmtShort(date), spending: d.operating_expenses + d.purchases_total }
         })
     }, [f, from, to, rangeError])
 
@@ -133,14 +181,16 @@ export default function LaporanPage() {
                     <p><b>{f.shortfall_count} penjualan</b> terjadi saat stok sistem kurang, jadi HPP-nya belum lengkap dan laba bisa terlihat lebih tinggi dari kenyataan. Catat kulak dan sortir agar stok sistem sesuai.</p>
                 </div>
             )}
+            {!!f?.reconciliation_mismatch && <div role="alert" className="flex items-start gap-2 rounded-xl border border-danger/40 bg-danger/5 p-3 text-sm text-danger"><AlertTriangle size={18} className="mt-0.5 shrink-0"/><p>Data tidak cocok. Selisih: {rupiahSigned(f.reconciliation_difference ?? 0)}.</p></div>}
 
-            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3 xl:grid-cols-5">
                 <StatCard icon={ShoppingCart} label="Total transaksi" value={f ? String(f.transactions_count) : '...'} dim={dim}
                     note={f && f.void_count > 0 ? `${f.void_count} dibatalkan` : undefined} />
                 <StatCard icon={Banknote} label="Total pendapatan" value={f ? rupiah(f.net_sales) : '...'} dim={dim} note="Setelah diskon" />
                 <StatCard icon={Wallet} label="Total pengeluaran" value={f ? rupiah(f.total_spending) : '...'} dim={dim}
                     note={f ? `Operasional ${rupiah(f.operating_expenses)} + kulak ${rupiah(f.purchases_total)}` : undefined} />
-                <StatCard icon={Scale} label="Laba usaha" value={f ? rupiahSigned(f.net_profit) : '...'} dim={dim} danger={!!f && f.net_profit < 0} />
+                <StatCard icon={Scale} label="Laba usaha" value={f ? rupiahSigned(netProfit) : '...'} dim={dim} danger={!!f && netProfit < 0} />
+                <StatCard icon={Package} label="Nilai persediaan" value={f ? rupiah(f.ending_inventory_value ?? 0) : '...'} dim={dim} note="Display + belum disortir" />
             </div>
 
             <section className="rounded-2xl border border-surface-border p-4 sm:p-5">
@@ -151,10 +201,10 @@ export default function LaporanPage() {
                         <Row label="Pendapatan bersih" value={rupiah(f.net_sales)} note="Setelah diskon" />
                         <Row label="HPP barang terjual" value={`-${rupiah(f.cogs)}`} />
                         <Row label="Laba kotor" value={rupiahSigned(f.gross_profit)} bold danger={f.gross_profit < 0} />
-                        <Row label="Susut" value={`${f.susut_kg ?? '-'} kg`} />
-                        <Row label="Nilai susut pembersihan" value={rupiah(f.cleaning_loss_value)} />
+                        <Row label="Nilai susut" value={`-${rupiah(totalShrinkValue)}`} />
                         <Row label="Biaya operasional" value={`-${rupiah(f.operating_expenses)}`} />
-                        <Row label="Laba bersih" value={rupiahSigned(f.net_profit)} bold danger={f.net_profit < 0} />
+                        <Row label="Selisih lebih" value={rupiah(f.surplus_value ?? 0)} />
+                        <Row label="Laba bersih" value={rupiahSigned(netProfit)} bold danger={netProfit < 0} />
                     </div>
                 ) : <div className="h-40 animate-pulse rounded-xl bg-surface" />}
             </section>
