@@ -6,6 +6,7 @@ import type { CartLine, Category, Method, Quote } from '../lib/types'
 
 interface Props {
   lines: CartLine[]; quote?: Quote; ready: boolean; error: string | null
+  insufficient: Set<number>
   category: Category; setCategory: (c: Category) => void
   name: string; setName: (s: string) => void
   method: Method; setMethod: (m: Method) => void
@@ -62,9 +63,10 @@ export default function CartPanel(p: Props) {
                 <li key={l.product.id} className="rounded-xl bg-surface p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-bold">{l.product.name}</p>
+                      <p className="text-sm font-bold">{l.product.name}</p>
                       <p className="text-xs text-ink-muted">{q ? `${rupiah(q.price_per_kg)} x ${formatKgStr(q.weight_kg)}kg` : 'menghitung...'}</p>
                       <p className="mt-1 text-sm font-bold text-brand">{q ? rupiah(q.line_total) : '...'}</p>
+                      {p.insufficient.has(l.product.id) && <p role="status" className="mt-1 text-xs text-danger">Berat melebihi stok tersortir. Transaksi tetap bisa diproses.</p>}
                     </div>
                     <div className="flex flex-col items-end gap-2">
                       <div className="flex items-center gap-1">
