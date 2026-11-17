@@ -22,4 +22,4 @@ export const useSuppliers = () => useQuery({ queryKey: ['suppliers'], queryFn: (
 export const useProductsAdmin = () => useQuery({ queryKey: ['products-admin'], queryFn: () => api<{ data: ProductAdmin[] }>('/products').then((r) => r.data) })
 
 export const refreshStock = (qc: QueryClient) =>
-  Promise.all(['purchases', 'stock', 'stock-report', 'products-admin', 'finance'].map((k) => qc.invalidateQueries({ queryKey: [k] })))
+  Promise.all(['purchases', 'purchase', 'product-batches', 'stock', 'stock-report', 'products-admin', 'finance'].map((k) => qc.invalidateQueries({ queryKey: [k] })))
