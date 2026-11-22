@@ -236,7 +236,7 @@
                 {
                   "key": "active",
                   "value": "1",
-                  "description": "Filter aktif untuk owner; kasir tetap hanya menerima produk aktif."
+                  "description": "Filter aktif untuk owner; kasir tetap hanya menerima produk aktif dan mendapat stock_kg dari ledger (termasuk nilai negatif), tanpa nilai persediaan atau data biaya."
                 }
               ]
             }
