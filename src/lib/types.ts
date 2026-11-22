@@ -1,5 +1,5 @@
 export type ProductKind = 'merah' | 'putih'
-export interface Product { id: number; name: string; jenis: ProductKind; price_retail: number; price_5kg: number; is_active: boolean }
+export interface Product { id: number; name: string; jenis: ProductKind; price_retail: number; price_5kg: number; is_active: boolean; stock_kg?: string }
 export type Category = 'ecer' | 'grosir'
 export type Method = 'cash' | 'qris'
 export interface CartLine { product: Product; grams: number } // berat disimpan sebagai gram (integer), bukan float

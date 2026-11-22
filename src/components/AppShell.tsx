@@ -7,7 +7,7 @@ type Role = User['role']
 interface NavItem { to: string; label: string; title: string; sub: string | ((r: Role) => string); icon: LucideIcon; roles: Role[] }
 
 const NAV: NavItem[] = [
-  { to: '/kasir', label: 'Kasir', title: 'Kasir', sub: 'Toko Sumber Rezeki', icon: ShoppingCart, roles: ['kasir', 'owner'] },
+  { to: '/kasir', label: 'Kasir', title: 'Kasir', sub: '', icon: ShoppingCart, roles: ['kasir', 'owner'] },
   { to: '/barang', label: 'Barang & Stok', title: 'Barang & Stok', sub: 'Kelola data barang dan inventori', icon: Package, roles: ['owner'] },
   { to: '/riwayat', label: 'Riwayat Transaksi', title: 'Riwayat Transaksi', sub: (r) => (r === 'owner' ? 'Lihat dan kelola riwayat penjualan' : 'Lihat riwayat penjualan hari ini dan kemarin'), icon: History, roles: ['kasir', 'owner'] },
   { to: '/laporan', label: 'Laporan', title: 'Laporan', sub: 'Analisa keuangan dan performa toko', icon: BarChart3, roles: ['owner'] },
@@ -66,7 +66,7 @@ export default function AppShell() {
             </button>
             <div className="min-w-0">
               <h1 className="text-lg font-bold leading-tight">{cur?.title}</h1>
-              <p className="truncate text-xs text-ink-muted">{sub}</p>
+              {sub && <p className="truncate text-xs text-ink-muted">{sub}</p>}
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-3 rounded-xl bg-surface px-3 py-1.5">

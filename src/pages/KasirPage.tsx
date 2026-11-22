@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle2, Download, Package, Plus, Printer, Search, ShoppingCart } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import { rupiah } from '../lib/format'
+import { formatKgStr, rupiah } from '../lib/format'
 import { gramsToKgString, kgStringToGrams, uuid, useDebounced, useMediaQuery } from '../lib/util'
 import type { CartLine, Category, Method, Product, Quote, Receipt } from '../lib/types'
 import CartPanel from '../components/CartPanel'
@@ -15,6 +15,7 @@ import WeightPicker from '../components/WeightPicker'
 interface Done { id: number; invoice: string; total: number; paid: number; change: number }
 
 export default function KasirPage() {
+  const queryClient = useQueryClient()
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const [search, setSearch] = useState('')
   const [lines, setLines] = useState<CartLine[]>([])
@@ -118,6 +119,7 @@ export default function KasirPage() {
       setPaying(false)
       setDone({ id: tx.data.id, invoice: tx.data.invoice_no, total: finalTotal, paid, change: tx.data.change })
       resetCart()
+      void queryClient.invalidateQueries({ queryKey: ['products'] })
       if (print) void printFor(tx.data.id, paid)
     } catch (e) {
       const msg = e instanceof ApiError ? (e.errors ? Object.values(e.errors)[0]?.[0] : e.message) : 'Terjadi kesalahan.'
@@ -160,6 +162,9 @@ export default function KasirPage() {
                 <div className="grid h-24 place-items-center bg-surface text-brand sm:h-28"><Package size={36} /></div>
                 <div className="p-3">
                   <p className="font-semibold leading-tight">{p.name}</p>
+                  <p className={`mt-1 text-xs ${Number(p.stock_kg ?? 0) < 0 ? 'font-semibold text-danger' : 'text-ink-muted'}`}>
+                    Stok {p.stock_kg == null ? '—' : `${formatKgStr(p.stock_kg)} kg`}
+                  </p>
                   <div className="mt-3 flex items-end justify-between">
                     <p className="text-sm font-bold text-brand">{rupiah(priceOf(p))}<span className="font-normal text-ink-muted">/kg</span></p>
                     <span className="grid size-9 place-items-center rounded-lg bg-brand text-white"><Plus size={18} /></span>
