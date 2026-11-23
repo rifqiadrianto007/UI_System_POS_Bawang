@@ -130,7 +130,7 @@ export default function LaporanPage() {
             {Number(f?.shortfall_count ?? 0) > 0 && (
                 <div role="alert" className="flex items-start gap-2 rounded-xl border border-danger/40 bg-danger/5 p-3 text-sm text-danger">
                     <AlertTriangle size={18} className="mt-0.5 shrink-0" />
-                    <p>{f.shortfall_count} penjualan memakai HPP sementara karena stok sistem kurang. Catat kulak dan sortir agar HPP dikoreksi otomatis.</p>
+                    <p>{f?.shortfall_count} penjualan memakai HPP sementara karena stok sistem kurang. Catat kulak dan sortir agar HPP dikoreksi otomatis.</p>
                 </div>
             )}
             {!!f?.reconciliation_mismatch && <div role="alert" className="flex items-start gap-2 rounded-xl border border-danger/40 bg-danger/5 p-3 text-sm text-danger"><AlertTriangle size={18} className="mt-0.5 shrink-0"/><p>Data tidak cocok. Selisih: {rupiahSigned(f.reconciliation_difference ?? 0)}.</p></div>}
