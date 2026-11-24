@@ -1,5 +1,6 @@
 import { Loader2 } from 'lucide-react'
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import AppShell from './components/AppShell'
 import { useAuth, type User } from './lib/auth'
 import { homeFor } from './lib/roles'
@@ -49,6 +50,7 @@ export default function App() {
         </Route>
         <Route path="*" element={<Home />} />
       </Routes>
+      <Analytics />
     </BrowserRouter>
   )
 }
