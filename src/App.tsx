@@ -11,46 +11,48 @@ import LaporanPage from './pages/LaporanPage'
 import LoginPage from './pages/LoginPage'
 import PengeluaranPage from './pages/PengeluaranPage'
 import RiwayatPage from './pages/RiwayatPage'
+import TesPrinter from './pages/TesPrinter'
 
 const Spinner = () => <div className="grid h-full place-items-center text-brand"><Loader2 className="animate-spin" /></div>
 
 function RequireAuth() {
-  const { user, loading } = useAuth()
-  if (loading) return <Spinner />
-  return user ? <Outlet /> : <Navigate to="/login" replace />
+    const { user, loading } = useAuth()
+    if (loading) return <Spinner />
+    return user ? <Outlet /> : <Navigate to="/login" replace />
 }
 
 // Halaman owner. Kasir diarahkan kembali ke halamannya; pembatasan sebenarnya tetap ditegakkan backend.
 function RequireRole({ role }: { role: User['role'] }) {
-  const { user } = useAuth()
-  return user?.role === role ? <Outlet /> : <Navigate to={user ? homeFor(user.role) : '/login'} replace />
+    const { user } = useAuth()
+    return user?.role === role ? <Outlet /> : <Navigate to={user ? homeFor(user.role) : '/login'} replace />
 }
 
 function Home() {
-  const { user, loading } = useAuth()
-  if (loading) return <Spinner />
-  return <Navigate to={user ? homeFor(user.role) : '/login'} replace />
+    const { user, loading } = useAuth()
+    if (loading) return <Spinner />
+    return <Navigate to={user ? homeFor(user.role) : '/login'} replace />
 }
 
 export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<RequireAuth />}>
-          <Route element={<ErrorBoundary level="tata letak"><AppShell /></ErrorBoundary>}>
-            <Route path="/kasir" element={<KasirPage />} />
-            <Route path="/riwayat" element={<RiwayatPage />} />
-            <Route element={<RequireRole role="owner" />}>
-              <Route path="/laporan" element={<LaporanPage />} />
-              <Route path="/barang" element={<ErrorBoundary level="halaman"><BarangPage /></ErrorBoundary>} />
-              <Route path="/pengeluaran" element={<PengeluaranPage />} />
-            </Route>
-          </Route>
-        </Route>
-        <Route path="*" element={<Home />} />
-      </Routes>
-      <Analytics />
-    </BrowserRouter>
-  )
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route element={<RequireAuth />}>
+                    <Route path="/tes-printer" element={<TesPrinter />} />
+                    <Route element={<ErrorBoundary level="tata letak"><AppShell /></ErrorBoundary>}>
+                        <Route path="/kasir" element={<KasirPage />} />
+                        <Route path="/riwayat" element={<RiwayatPage />} />
+                        <Route element={<RequireRole role="owner" />}>
+                            <Route path="/laporan" element={<LaporanPage />} />
+                            <Route path="/barang" element={<ErrorBoundary level="halaman"><BarangPage /></ErrorBoundary>} />
+                            <Route path="/pengeluaran" element={<PengeluaranPage />} />
+                        </Route>
+                    </Route>
+                </Route>
+                <Route path="*" element={<Home />} />
+            </Routes>
+            <Analytics />
+        </BrowserRouter>
+    )
 }
