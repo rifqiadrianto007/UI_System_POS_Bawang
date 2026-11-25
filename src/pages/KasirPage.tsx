@@ -10,7 +10,10 @@ import CartPanel from '../components/CartPanel'
 import Modal from '../components/Modal'
 import PaymentModal from '../components/PaymentModal'
 import Receipt58 from '../components/Receipt58'
+import PrinterStatusButton from '../components/PrinterStatusButton'
 import WeightPicker from '../components/WeightPicker'
+import { printViaBluetooth, shouldUseBluetooth } from '../lib/printer/printFlow'
+import { PrinterError } from '../lib/printer/printerService'
 
 interface Done { id: number; invoice: string; total: number; paid: number; change: number }
 
@@ -31,7 +34,9 @@ export default function KasirPage() {
   const [printData, setPrintData] = useState<Receipt | null>(null)
   const [printWidth, setPrintWidth] = useState<58 | 80>(58)
   const [printErr, setPrintErr] = useState<string | null>(null)
+  const [printerMsg, setPrinterMsg] = useState<string | null>(null)
   const attempt = useRef<{ sig: string; id: string } | null>(null)
+  const printLock = useRef(false)
 
   const products = useQuery({
     queryKey: ['products'],
@@ -84,6 +89,18 @@ export default function KasirPage() {
     api<{ data: Receipt }>(`/transactions/${id}/receipt`).then((rc) => ({ ...rc.data, amount_paid: rc.data.amount_paid ?? paid }))
 
   async function printFor(id: number, paid: number) {
+    // Printer Bluetooth sudah dipakai di perangkat ini: cetak langsung tanpa dialog cetak browser.
+    if (shouldUseBluetooth()) {
+      if (printLock.current) return // ketukan ganda tidak mencetak dua kali
+      printLock.current = true
+      try { await printViaBluetooth(() => fetchReceipt(id, paid)); setPrintErr(null) }
+      catch (e) {
+        if (e instanceof PrinterError) {
+          setPrintErr(e.code === 'CANCELLED' ? 'Struk belum dicetak. Ketuk Cetak nota untuk memilih printer lagi.' : e.message)
+        } else setPrintErr('Nota gagal diambil. Transaksi sudah tersimpan, coba cetak lagi.')
+      } finally { printLock.current = false }
+      return
+    }
     try { setPrintData(await fetchReceipt(id, paid)); setPrintErr(null) }
     catch { setPrintErr('Nota gagal diambil. Transaksi sudah tersimpan, coba cetak lagi.') }
   }
@@ -141,11 +158,15 @@ export default function KasirPage() {
     <>
       <div className="flex gap-6">
         <section className="min-w-0 flex-1 pb-24 lg:pb-0">
-          <div className="relative mb-4">
-            <Search size={18} className="absolute top-1/2 left-4 -translate-y-1/2 text-ink-muted" />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari"
-              className="w-full rounded-xl border border-surface-border bg-white py-3 pr-4 pl-11 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+          <div className="mb-4 flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search size={18} className="absolute top-1/2 left-4 -translate-y-1/2 text-ink-muted" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Cari"
+                className="w-full rounded-xl border border-surface-border bg-white py-3 pr-4 pl-11 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" />
+            </div>
+            <PrinterStatusButton onError={setPrinterMsg} />
           </div>
+          {printerMsg && <p role="alert" className="-mt-2 mb-3 text-sm text-danger">{printerMsg}</p>}
 
           {products.isPending && <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{[0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="h-44 animate-pulse rounded-2xl bg-surface" />)}</div>}
           {products.isError && (
