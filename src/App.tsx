@@ -11,7 +11,6 @@ import LaporanPage from './pages/LaporanPage'
 import LoginPage from './pages/LoginPage'
 import PengeluaranPage from './pages/PengeluaranPage'
 import RiwayatPage from './pages/RiwayatPage'
-import TesPrinter from './pages/TesPrinter'
 
 const Spinner = () => <div className="grid h-full place-items-center text-brand"><Loader2 className="animate-spin" /></div>
 
@@ -39,7 +38,6 @@ export default function App() {
             <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route element={<RequireAuth />}>
-                    <Route path="/tes-printer" element={<TesPrinter />} />
                     <Route element={<ErrorBoundary level="tata letak"><AppShell /></ErrorBoundary>}>
                         <Route path="/kasir" element={<KasirPage />} />
                         <Route path="/riwayat" element={<RiwayatPage />} />
