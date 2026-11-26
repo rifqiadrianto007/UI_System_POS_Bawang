@@ -48,8 +48,6 @@ function draw(doc: jsPDF, r: Receipt, W: 58 | 80): number {
   }
   y += 4
   text('TERIMA KASIH', 9, 'bolditalic')
-  y += 2.5
-  text(`hubungi : ${STORE.phone}`, 6)
   return y + 7
 }
 

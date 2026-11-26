@@ -18,7 +18,6 @@ const store: StoreInfo = {
   name: "FAUNA BAWANG",
   address: "Pasar Buah Gebang",
   hours: "05.30-12.00 dan 16.00-21.00",
-  phone: "08123456789",
 };
 
 const sample: ReceiptData = {
@@ -69,7 +68,6 @@ describe("layoutReceipt", () => {
     expect(lines).toContain("Pasar Buah Gebang");
     expect(lines).toContain("Merah Premium A");
     expect(lines).toContain("TERIMA KASIH");
-    expect(lines).toContain("hubungi : 08123456789");
 
     const item = lines.find((t) => t.startsWith("2kg x Rp 27.500/kg"));
     expect(item?.endsWith("Rp 55.000")).toBe(true);
@@ -79,7 +77,7 @@ describe("layoutReceipt", () => {
 
   it("baris tanggal memakai WIB bila aplikasi tidak memberi dateTime", () => {
     const date = texts(sample).find((t) => t.startsWith("Date:"));
-    expect(date).toHaveLength(WIDTH_B);
+    expect(date).toHaveLength(WIDTH_A);
     expect(date?.endsWith("23.20  24/11/2026")).toBe(true);
   });
 
@@ -88,6 +86,41 @@ describe("layoutReceipt", () => {
       t.startsWith("Date:"),
     );
     expect(date?.endsWith("23.20  24/11/2026")).toBe(true);
+  });
+
+  it("nama pelanggan tercetak, dan '-' bila kosong", () => {
+    expect(texts({ ...sample, customer_name: "adi" })).toContain("Nama pelanggan : adi");
+    for (const empty of [null, undefined, "", "   "]) {
+      expect(texts({ ...sample, customer_name: empty })).toContain("Nama pelanggan : -");
+    }
+  });
+
+  it("nama pelanggan berada di atas garis pemisah pertama, bukan di bawah item", () => {
+    const lines = texts({ ...sample, customer_name: "adi" });
+    const name = lines.indexOf("Nama pelanggan : adi");
+    expect(name).toBeGreaterThan(lines.findIndex((t) => t.startsWith("Date:")));
+    expect(name).toBeLessThan(lines.findIndex((t) => t.startsWith("-")));
+  });
+
+  it("nama pelanggan panjang dibungkus dan aksennya dibuang", () => {
+    const long = "Bapak Ahmad Sūryānto dari Pasar Besar Malang Kota";
+    const lines = texts({ ...sample, customer_name: long }).filter((t) => t.includes("Suryanto") || t.includes("Malang Kota"));
+    expect(lines.length).toBeGreaterThan(0);
+    for (const line of lines) expect(line.length).toBeLessThanOrEqual(WIDTH_A);
+  });
+
+  it("struk bawaan hanya memakai font A, karena font B mencetak angka 2 sebagai 3", () => {
+    expect(layoutReceipt(sample, store).every((line) => line.font !== "B")).toBe(true);
+    const bytes = Array.from(buildReceipt(sample, store));
+    const fontB = bytes.findIndex((b, i) => b === 0x1b && bytes[i + 1] === 0x4d && bytes[i + 2] === 1);
+    expect(fontB).toBe(-1);
+  });
+
+  it("font kecil hanya menyala bila diminta", () => {
+    const lines = layoutReceipt(sample, store, { useSmallFont: true });
+    expect(lines.some((line) => line.font === "B")).toBe(true);
+    const date = lines.find((l) => l.text.startsWith("Date:"));
+    expect(date?.text).toHaveLength(WIDTH_B);
   });
 
   it("nomor invoice hanya tercetak bila showInvoiceNo menyala", () => {
@@ -125,8 +158,8 @@ describe("layoutReceipt", () => {
     expect(less.find((t) => t.startsWith("KEMBALI:"))?.endsWith("Rp 0")).toBe(true);
   });
 
-  it("nomor telepon kosong tidak mencetak baris kontak", () => {
-    expect(texts(sample, { ...store, phone: "" }).some((t) => t.startsWith("hubungi"))).toBe(false);
+  it("tidak mencetak baris kontak bila konfigurasi toko tidak memiliki nomor telepon", () => {
+    expect(texts(sample).some((t) => t.startsWith("hubungi"))).toBe(false);
   });
 
   it("aksen dibuang dari nama produk", () => {

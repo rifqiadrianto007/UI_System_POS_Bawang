@@ -28,6 +28,7 @@ export default function Receipt58({ r, width = 58 }: { r: Receipt; width?: 58 | 
 
       <div className="mt-2 flex justify-between text-[9px]"><span>Date:</span><span>{time}&nbsp;&nbsp;{date}</span></div>
       {STORE.showInvoiceNo && <p className="text-[8px]">{r.invoice_no}</p>}
+      <p className="break-words text-[9px]">Nama pelanggan : {r.customer_name?.trim() || '-'}</p>
       <Dash />
 
       <div className="space-y-1 text-[9px] leading-tight">
@@ -50,7 +51,6 @@ export default function Receipt58({ r, width = 58 }: { r: Receipt; width?: 58 | 
       )}
 
       <p className="mt-3 text-center text-[10px] font-bold italic tracking-wide">TERIMA KASIH</p>
-      <p className="mt-2 pb-4 text-center text-[8px]">hubungi : {STORE.phone}</p>
     </div>
   )
 }

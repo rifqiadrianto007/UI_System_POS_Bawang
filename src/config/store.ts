@@ -2,8 +2,7 @@
 export const STORE = {
   name: 'FAUNA BAWANG',
   address: 'Pasar Buah Gebang',
-  hours: '05.30-12.00 dan 16.00-21.00',
-  phone: '082139578380', // dari desain nota client, pastikan bukan data dummy
+  hours: '05.30-12.00 dan 16.00-21.00',// dari desain nota client, pastikan bukan data dummy
   // Di luar desain client. Nyalakan bila client setuju.
   showInvoiceNo: false, // nomor invoice kecil di bawah tanggal (berguna untuk mencari transaksi saat void/komplain)
   showPayment: true,    // baris BAYAR dan KEMBALI setelah TOTAL (revisi client)
